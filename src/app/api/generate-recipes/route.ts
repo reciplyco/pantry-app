@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateRecipes } from "@/lib/anthropic";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { FREE_TIER_WEEKLY_LIMIT, type Profile } from "@/lib/types";
+
+const requestSchema = z.object({
+  pantryItems: z
+    .array(z.string().trim().min(1).max(80))
+    .min(1, "Add at least one pantry item first.")
+    .max(40),
+});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -13,19 +22,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  const pantryItems: string[] = Array.isArray(body?.pantryItems)
-    ? body.pantryItems.filter(
-        (x: unknown): x is string => typeof x === "string" && x.trim().length > 0
-      )
-    : [];
-
-  if (pantryItems.length === 0) {
+  const allowed = await checkRateLimit(`generate-recipes:${user.id}`, 10, 300);
+  if (!allowed) {
     return NextResponse.json(
-      { error: "Add at least one pantry item first." },
+      { error: "Too many requests. Please wait a few minutes and try again." },
+      { status: 429 }
+    );
+  }
+
+  const json = await request.json().catch(() => null);
+  const parsed = requestSchema.safeParse(json);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request." },
       { status: 400 }
     );
   }
+
+  const { pantryItems } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")

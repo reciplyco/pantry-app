@@ -15,6 +15,8 @@ import PantryPanel from "./PantryPanel";
 import RecipeGrid from "./RecipeGrid";
 import ShoppingList from "./ShoppingList";
 import MealPlanner from "./MealPlanner";
+import OnboardingChecklist from "./OnboardingChecklist";
+import Toast, { type ToastState } from "./Toast";
 
 type Props = {
   initialPantryItems: PantryItem[];
@@ -47,9 +49,14 @@ export default function Dashboard({
   const [usedThisWeek, setUsedThisWeek] = useState(generationsUsedThisWeek);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const isPro = subscriptionStatus === "active";
   const remaining = Math.max(0, freeTierWeeklyLimit - usedThisWeek);
+
+  function showToast(message: string, onUndo?: () => void) {
+    setToast({ id: Date.now(), message, onUndo });
+  }
 
   async function addPantryItem(name: string) {
     const trimmed = name.trim();
@@ -63,8 +70,12 @@ export default function Dashboard({
   }
 
   async function removePantryItem(id: string) {
+    const removed = pantryItems.find((p) => p.id === id);
     setPantryItems((prev) => prev.filter((p) => p.id !== id));
     await supabase.from("pantry_items").delete().eq("id", id);
+    if (removed) {
+      showToast(`Removed "${removed.name}"`, () => addPantryItem(removed.name));
+    }
   }
 
   async function handleGenerate() {
@@ -133,15 +144,40 @@ export default function Dashboard({
   }
 
   async function removeShoppingItem(id: string) {
+    const removed = shoppingList.find((i) => i.id === id);
     setShoppingList((prev) => prev.filter((i) => i.id !== id));
     await supabase.from("shopping_list_items").delete().eq("id", id);
+    if (removed) {
+      showToast(`Removed "${removed.name}"`, () =>
+        addShoppingItem(removed.name, removed.quantity ?? "")
+      );
+    }
   }
 
   async function clearCheckedShoppingItems() {
-    const ids = shoppingList.filter((i) => i.checked).map((i) => i.id);
+    const removed = shoppingList.filter((i) => i.checked);
+    const ids = removed.map((i) => i.id);
     if (ids.length === 0) return;
     setShoppingList((prev) => prev.filter((i) => !i.checked));
     await supabase.from("shopping_list_items").delete().in("id", ids);
+    showToast(
+      `Cleared ${removed.length} checked item${removed.length === 1 ? "" : "s"}`,
+      async () => {
+        const { data } = await supabase
+          .from("shopping_list_items")
+          .insert(
+            removed.map((i) => ({
+              name: i.name,
+              quantity: i.quantity,
+              source_recipe_id: i.source_recipe_id,
+              checked: false,
+            }))
+          )
+          .select("*")
+          .returns<ShoppingListItem[]>();
+        if (data) setShoppingList((prev) => [...prev, ...data]);
+      }
+    );
   }
 
   async function loadWeek(newWeekStartDate: string) {
@@ -170,12 +206,26 @@ export default function Dashboard({
   }
 
   async function removeMealPlanEntry(id: string) {
+    const removed = mealPlan.find((e) => e.id === id);
     setMealPlan((prev) => prev.filter((e) => e.id !== id));
     await supabase.from("meal_plan_entries").delete().eq("id", id);
+    if (removed) {
+      showToast(
+        `Removed "${removed.recipe?.title ?? "recipe"}" from ${removed.day}`,
+        () => addToMealPlan(removed.recipe_id, removed.day)
+      );
+    }
   }
 
   return (
     <div className="space-y-10">
+      <OnboardingChecklist
+        hasPantryItems={pantryItems.length > 0}
+        hasRecipes={recipes.length > 0}
+        hasShoppingListItems={shoppingList.length > 0}
+        hasMealPlanEntries={mealPlan.length > 0}
+      />
+
       <PantryPanel
         pantryItems={pantryItems}
         onAdd={addPantryItem}
@@ -210,6 +260,8 @@ export default function Dashboard({
           onRemoveEntry={removeMealPlanEntry}
         />
       </div>
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

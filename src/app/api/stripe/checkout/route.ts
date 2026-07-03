@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { Profile } from "@/lib/types";
+
+const requestSchema = z.object({
+  plan: z.enum(["monthly", "yearly"]).default("monthly"),
+});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -13,8 +19,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  const plan = body?.plan === "yearly" ? "yearly" : "monthly";
+  const allowed = await checkRateLimit(`stripe-checkout:${user.id}`, 10, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429 }
+    );
+  }
+
+  const json = await request.json().catch(() => ({}));
+  const parsed = requestSchema.safeParse(json);
+  const plan = parsed.success ? parsed.data.plan : "monthly";
   const priceId =
     plan === "yearly"
       ? process.env.STRIPE_PRICE_YEARLY!

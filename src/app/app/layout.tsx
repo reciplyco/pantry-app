@@ -52,6 +52,12 @@ export default async function AppLayout({
             >
               Billing
             </Link>
+            <Link
+              href="/app/account"
+              className="text-sm text-ink-muted transition hover:text-ink"
+            >
+              Account
+            </Link>
             <SignOutButton />
           </div>
         </div>
