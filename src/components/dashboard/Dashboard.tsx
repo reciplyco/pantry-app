@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { addDays, toDateKey } from "@/lib/dates";
+import { addDays, currentWeekStartDateKey, toDateKey } from "@/lib/dates";
 import type {
   Day,
   MealPlanEntryWithRecipe,
@@ -16,6 +16,7 @@ import RecipeGrid from "./RecipeGrid";
 import ShoppingList from "./ShoppingList";
 import MealPlanner from "./MealPlanner";
 import OnboardingChecklist from "./OnboardingChecklist";
+import ReminderBanner from "./ReminderBanner";
 import Toast, { type ToastState } from "./Toast";
 
 type Props = {
@@ -242,6 +243,12 @@ export default function Dashboard({
         recipes={recipes}
         onAddToShoppingList={addNeedIngredientsToShoppingList}
         onAddToMealPlan={addToMealPlan}
+      />
+
+      <ReminderBanner
+        weekStartDate={weekStartDate}
+        isCurrentWeek={weekStartDate === currentWeekStartDateKey()}
+        hasMealPlanEntries={mealPlan.length > 0}
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_2fr]">
