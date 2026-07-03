@@ -1,0 +1,88 @@
+import { DAYS, DAY_LABELS, type MealPlanEntryWithRecipe } from "@/lib/types";
+import { addDays, formatShortDate } from "@/lib/dates";
+
+type Props = {
+  weekStartDate: string;
+  entries: MealPlanEntryWithRecipe[];
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
+  onRemoveEntry: (id: string) => Promise<void>;
+};
+
+export default function MealPlanner({
+  weekStartDate,
+  entries,
+  onPrevWeek,
+  onNextWeek,
+  onRemoveEntry,
+}: Props) {
+  const monday = new Date(`${weekStartDate}T00:00:00`);
+  const sunday = addDays(monday, 6);
+
+  return (
+    <section>
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-2xl font-medium">Meal planner</h2>
+        <div className="flex items-center gap-3 font-mono text-xs text-ink-muted">
+          <button
+            type="button"
+            onClick={onPrevWeek}
+            aria-label="Previous week"
+            className="rounded-full border border-line px-2 py-1 transition hover:border-ink"
+          >
+            ‹
+          </button>
+          <span>
+            {formatShortDate(monday)} – {formatShortDate(sunday)}
+          </span>
+          <button
+            type="button"
+            onClick={onNextWeek}
+            aria-label="Next week"
+            className="rounded-full border border-line px-2 py-1 transition hover:border-ink"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        {DAYS.map((day) => {
+          const dayEntries = entries.filter((e) => e.day === day);
+          return (
+            <div key={day} className="paper-card rounded-sm p-3">
+              <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
+                {DAY_LABELS[day].slice(0, 3)}
+              </p>
+              <div className="mt-2 space-y-2">
+                {dayEntries.length === 0 && (
+                  <p className="text-xs text-ink-muted">—</p>
+                )}
+                {dayEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-sm border border-line bg-paper-alt px-2 py-1.5 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="leading-snug">
+                        {entry.recipe?.title ?? "Deleted recipe"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveEntry(entry.id)}
+                        aria-label="Remove from plan"
+                        className="shrink-0 text-ink-muted transition hover:text-accent"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

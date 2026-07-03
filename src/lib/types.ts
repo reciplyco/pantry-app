@@ -74,4 +74,8 @@ export type MealPlanEntry = {
   created_at: string;
 };
 
+export type MealPlanEntryWithRecipe = MealPlanEntry & {
+  recipe: Pick<Recipe, "id" | "title" | "time_minutes" | "servings"> | null;
+};
+
 export const FREE_TIER_WEEKLY_LIMIT = 3;
