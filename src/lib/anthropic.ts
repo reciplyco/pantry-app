@@ -1,7 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NeedIngredient, Nutrition } from "./types";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazily instantiated — see the matching comment in lib/stripe.ts for why.
+let _anthropic: Anthropic | null = null;
+
+const anthropic: Anthropic = new Proxy({} as Anthropic, {
+  get(_target, prop, receiver) {
+    if (!_anthropic) {
+      _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    }
+    return Reflect.get(_anthropic, prop, receiver);
+  },
+});
 
 export type GeneratedRecipe = {
   title: string;

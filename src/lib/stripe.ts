@@ -1,7 +1,21 @@
 import Stripe from "stripe";
 import type { SubscriptionStatus } from "./types";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Lazily instantiated: Next.js evaluates route handler modules while
+// collecting page data at build time, before env vars from a fresh Vercel
+// project are necessarily available. Creating the client eagerly at module
+// scope would crash the build; a Proxy defers construction to first use
+// inside an actual request.
+let _stripe: Stripe | null = null;
+
+export const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, prop, receiver) {
+    if (!_stripe) {
+      _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    }
+    return Reflect.get(_stripe, prop, receiver);
+  },
+});
 
 export function mapStripeStatus(
   status: Stripe.Subscription.Status
