@@ -1,5 +1,12 @@
 export type SubscriptionStatus = "free" | "active" | "past_due" | "canceled";
 
+// Generated recipe steps sometimes come back with a leading "1. " already
+// baked into the text; strip it so it doesn't double up with the <ol>'s
+// own numbering.
+export function stripStepNumber(step: string): string {
+  return step.replace(/^\s*\d+[.)]\s*/, "");
+}
+
 export type Profile = {
   id: string;
   email: string | null;
@@ -39,6 +46,7 @@ export type Recipe = {
   steps: string[];
   nutrition: Nutrition | null;
   created_at: string;
+  share_token: string | null;
 };
 
 export type ShoppingListItem = {

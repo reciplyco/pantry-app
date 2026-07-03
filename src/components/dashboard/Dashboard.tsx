@@ -106,6 +106,19 @@ export default function Dashboard({
     }
   }
 
+  async function toggleShare(recipe: Recipe) {
+    const newToken = recipe.share_token ? null : crypto.randomUUID();
+    const { data, error } = await supabase
+      .from("recipes")
+      .update({ share_token: newToken })
+      .eq("id", recipe.id)
+      .select("*")
+      .single<Recipe>();
+    if (!error && data) {
+      setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? data : r)));
+    }
+  }
+
   async function addShoppingItem(name: string, quantity: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -243,6 +256,7 @@ export default function Dashboard({
         recipes={recipes}
         onAddToShoppingList={addNeedIngredientsToShoppingList}
         onAddToMealPlan={addToMealPlan}
+        onToggleShare={toggleShare}
       />
 
       <ReminderBanner

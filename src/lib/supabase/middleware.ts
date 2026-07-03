@@ -7,6 +7,7 @@ function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.includes(pathname)) return true;
   if (pathname.startsWith("/auth")) return true;
   if (pathname.startsWith("/api/stripe/webhook")) return true;
+  if (pathname.startsWith("/r/")) return true;
   return false;
 }
 

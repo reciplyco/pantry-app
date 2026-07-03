@@ -1,23 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import { DAYS, DAY_LABELS, type Day, type Recipe } from "@/lib/types";
+import { DAYS, DAY_LABELS, stripStepNumber, type Day, type Recipe } from "@/lib/types";
 
 type Props = {
   recipe: Recipe;
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
+  onToggleShare: (recipe: Recipe) => Promise<void>;
 };
 
 export default function RecipeCard({
   recipe,
   onAddToShoppingList,
   onAddToMealPlan,
+  onToggleShare,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [day, setDay] = useState<Day>("mon");
   const [addingToList, setAddingToList] = useState(false);
   const [addingToPlan, setAddingToPlan] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl =
+    recipe.share_token && typeof window !== "undefined"
+      ? `${window.location.origin}/r/${recipe.share_token}`
+      : null;
+
+  async function handleToggleShare() {
+    setSharing(true);
+    await onToggleShare(recipe);
+    setSharing(false);
+  }
+
+  async function handleCopyLink() {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <article className="paper-card flex flex-col rounded-sm p-5">
@@ -66,18 +88,51 @@ export default function RecipeCard({
       {expanded && recipe.steps?.length > 0 && (
         <ol className="mt-4 list-decimal space-y-2 pl-4 text-sm text-ink">
           {recipe.steps.map((step, i) => (
-            <li key={i}>{step}</li>
+            <li key={i}>{stripStepNumber(step)}</li>
           ))}
         </ol>
       )}
 
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="mt-3 self-start text-sm font-medium text-accent underline underline-offset-2"
-      >
-        {expanded ? "Hide recipe" : "View recipe"}
-      </button>
+      <div className="mt-3 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-sm font-medium text-accent underline underline-offset-2"
+        >
+          {expanded ? "Hide recipe" : "View recipe"}
+        </button>
+        <button
+          type="button"
+          disabled={sharing}
+          onClick={handleToggleShare}
+          className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink disabled:opacity-50"
+        >
+          {sharing
+            ? "…"
+            : recipe.share_token
+              ? "Stop sharing"
+              : "Share"}
+        </button>
+      </div>
+
+      {shareUrl && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="text"
+            readOnly
+            value={shareUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 rounded-sm border border-line bg-paper-alt px-2 py-1 font-mono text-xs text-ink-muted outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-medium transition hover:border-ink"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-1 flex-col justify-end gap-3">
         <button

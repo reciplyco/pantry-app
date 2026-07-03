@@ -8,6 +8,7 @@ type Props = {
   recipes: Recipe[];
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
+  onToggleShare: (recipe: Recipe) => Promise<void>;
 };
 
 type SortBy = "newest" | "time" | "calories";
@@ -27,6 +28,7 @@ export default function RecipeGrid({
   recipes,
   onAddToShoppingList,
   onAddToMealPlan,
+  onToggleShare,
 }: Props) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
@@ -109,6 +111,7 @@ export default function RecipeGrid({
               recipe={recipe}
               onAddToShoppingList={onAddToShoppingList}
               onAddToMealPlan={onAddToMealPlan}
+              onToggleShare={onToggleShare}
             />
           ))}
         </div>
