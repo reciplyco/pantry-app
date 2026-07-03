@@ -20,7 +20,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pantry — cook what you already have",
+  title: "Reciply — cook what you already have",
   description:
     "Turn the ingredients you already own into recipes, a shopping list for what's missing, and a weekly meal plan.",
 };
