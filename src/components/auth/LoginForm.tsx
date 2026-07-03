@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
 
 type Tab = "signin" | "signup";
 
@@ -27,7 +28,7 @@ export default function LoginForm() {
     const supabase = createClient();
 
     if (tab === "signin") {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -36,10 +37,14 @@ export default function LoginForm() {
         setError(error.message);
         return;
       }
+      if (data.user) {
+        identifyUser(data.user.id, data.user.email ?? null);
+        track(AnalyticsEvent.UserSignedIn);
+      }
       router.push("/app");
       router.refresh();
     } else {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -50,6 +55,10 @@ export default function LoginForm() {
       if (error) {
         setError(error.message);
         return;
+      }
+      if (data.user) {
+        identifyUser(data.user.id, data.user.email ?? null);
+        track(AnalyticsEvent.UserSignedUp);
       }
       setMessage("Check your email to confirm your account, then sign in.");
     }

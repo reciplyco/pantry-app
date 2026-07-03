@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnalyticsEvent, track } from "@/lib/analytics";
 import type { SubscriptionStatus } from "@/lib/types";
 
 type Props = {
@@ -20,6 +21,7 @@ export default function BillingPanel({
   async function upgrade(plan: "monthly" | "yearly") {
     setLoading(plan);
     setError(null);
+    track(AnalyticsEvent.UpgradeClicked, { plan });
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",

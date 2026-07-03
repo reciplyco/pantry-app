@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Karla, Space_Mono } from "next/font/google";
+import PostHogProvider from "@/components/PostHogProvider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -36,7 +37,7 @@ export default function RootLayout({
       className={`${fraunces.variable} ${karla.variable} ${spaceMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink font-sans">
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );

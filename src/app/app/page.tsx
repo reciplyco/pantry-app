@@ -61,6 +61,8 @@ export default async function AppPage() {
 
   return (
     <Dashboard
+      userId={user.id}
+      userEmail={user.email ?? null}
       initialPantryItems={pantryItems ?? []}
       initialRecipes={recipes ?? []}
       initialShoppingList={shoppingList ?? []}

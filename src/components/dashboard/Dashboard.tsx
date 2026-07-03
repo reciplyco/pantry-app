@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, currentWeekStartDateKey, toDateKey } from "@/lib/dates";
+import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
 import type {
   Day,
   MealPlanEntryWithRecipe,
@@ -20,6 +21,8 @@ import ReminderBanner from "./ReminderBanner";
 import Toast, { type ToastState } from "./Toast";
 
 type Props = {
+  userId: string;
+  userEmail: string | null;
   initialPantryItems: PantryItem[];
   initialRecipes: Recipe[];
   initialShoppingList: ShoppingListItem[];
@@ -31,6 +34,8 @@ type Props = {
 };
 
 export default function Dashboard({
+  userId,
+  userEmail,
   initialPantryItems,
   initialRecipes,
   initialShoppingList,
@@ -41,6 +46,10 @@ export default function Dashboard({
   freeTierWeeklyLimit,
 }: Props) {
   const supabase = createClient();
+
+  useEffect(() => {
+    identifyUser(userId, userEmail);
+  }, [userId, userEmail]);
 
   const [pantryItems, setPantryItems] = useState(initialPantryItems);
   const [recipes, setRecipes] = useState(initialRecipes);
@@ -67,7 +76,10 @@ export default function Dashboard({
       .insert({ name: trimmed })
       .select("*")
       .single<PantryItem>();
-    if (!error && data) setPantryItems((prev) => [...prev, data]);
+    if (!error && data) {
+      setPantryItems((prev) => [...prev, data]);
+      track(AnalyticsEvent.PantryItemAdded);
+    }
   }
 
   async function removePantryItem(id: string) {
@@ -99,6 +111,9 @@ export default function Dashboard({
       }
       setRecipes((prev) => [...(body.recipes as Recipe[]), ...prev]);
       setUsedThisWeek((prev) => prev + 1);
+      track(AnalyticsEvent.RecipeGenerated, {
+        count: (body.recipes as Recipe[]).length,
+      });
     } catch {
       setGenerateError("Something went wrong. Please try again.");
     } finally {
@@ -116,6 +131,7 @@ export default function Dashboard({
       .single<Recipe>();
     if (!error && data) {
       setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? data : r)));
+      if (newToken) track(AnalyticsEvent.RecipeShared);
     }
   }
 
@@ -127,7 +143,10 @@ export default function Dashboard({
       .insert({ name: trimmed, quantity: quantity.trim() || null })
       .select("*")
       .single<ShoppingListItem>();
-    if (!error && data) setShoppingList((prev) => [...prev, data]);
+    if (!error && data) {
+      setShoppingList((prev) => [...prev, data]);
+      track(AnalyticsEvent.ShoppingListItemAdded);
+    }
   }
 
   async function addNeedIngredientsToShoppingList(recipe: Recipe) {
@@ -147,7 +166,10 @@ export default function Dashboard({
       .insert(toInsert)
       .select("*")
       .returns<ShoppingListItem[]>();
-    if (!error && data) setShoppingList((prev) => [...prev, ...data]);
+    if (!error && data) {
+      setShoppingList((prev) => [...prev, ...data]);
+      track(AnalyticsEvent.ShoppingListItemAdded, { count: data.length });
+    }
   }
 
   async function toggleShoppingItem(id: string, checked: boolean) {
@@ -216,7 +238,10 @@ export default function Dashboard({
       .insert({ recipe_id: recipeId, day, week_start_date: weekStartDate })
       .select("*, recipe:recipes(id,title,time_minutes,servings)")
       .single<MealPlanEntryWithRecipe>();
-    if (!error && data) setMealPlan((prev) => [...prev, data]);
+    if (!error && data) {
+      setMealPlan((prev) => [...prev, data]);
+      track(AnalyticsEvent.MealPlanEntryAdded);
+    }
   }
 
   async function removeMealPlanEntry(id: string) {
