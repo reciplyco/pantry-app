@@ -33,13 +33,13 @@ export default function AppTabs({
     shortLabel: string;
     count: number;
   }[] = [
-    { id: "pantry", label: "Pantry", shortLabel: "Pantry", count: pantryCount },
     {
       id: "generate",
       label: "Generate",
       shortLabel: "Generate",
       count: selectedCount,
     },
+    { id: "pantry", label: "Pantry", shortLabel: "Pantry", count: pantryCount },
     { id: "search", label: "Search", shortLabel: "Search", count: 0 },
     { id: "recipes", label: "Recipes", shortLabel: "Recipes", count: recipeCount },
     {

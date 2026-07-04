@@ -11,6 +11,7 @@
   --accent-ink: #fff8ee;
   --sage: #5c6b47;
   --sage-ink: #fff8ee;
+  --hero: #e4e0c7;
 }
 
 @theme inline {
@@ -24,6 +25,7 @@
   --color-accent-ink: var(--accent-ink);
   --color-sage: var(--sage);
   --color-sage-ink: var(--sage-ink);
+  --color-hero: var(--hero);
 
   --font-serif: var(--font-fraunces);
   --font-sans: var(--font-karla);

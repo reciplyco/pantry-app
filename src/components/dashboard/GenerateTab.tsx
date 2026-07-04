@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { getIngredientIcon } from "@/lib/ingredient-icons";
+import DietaryPreferencesPanel from "./DietaryPreferencesPanel";
 
 const MAX_INSTRUCTIONS_LENGTH = 100;
 
@@ -16,6 +17,8 @@ type Props = {
   isPro: boolean;
   remaining: number;
   freeTierWeeklyLimit: number;
+  initialDietaryPreferences: string[];
+  initialDietaryNotes: string;
 };
 
 export default function GenerateTab({
@@ -29,6 +32,8 @@ export default function GenerateTab({
   isPro,
   remaining,
   freeTierWeeklyLimit,
+  initialDietaryPreferences,
+  initialDietaryNotes,
 }: Props) {
   const isCapped = !isPro && remaining <= 0;
   const hasSelection = selectedNames.length > 0;
@@ -154,6 +159,11 @@ export default function GenerateTab({
           )}
         </div>
       </div>
+
+      <DietaryPreferencesPanel
+        initialPreferences={initialDietaryPreferences}
+        initialNotes={initialDietaryNotes}
+      />
     </div>
   );
 }

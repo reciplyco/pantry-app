@@ -26,28 +26,67 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <span className="font-serif text-4xl font-medium tracking-tight">
-          Reciply
-        </span>
-        <nav className="flex items-center gap-5 text-sm">
-          <Link
-            href="/login"
-            className="text-ink-muted transition hover:text-ink"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/login?tab=signup"
-            className="rounded-full bg-accent px-4 py-2 font-medium text-accent-ink transition hover:opacity-90"
-          >
-            Get started
-          </Link>
-        </nav>
-      </header>
+      <div className="relative overflow-hidden bg-hero">
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-32 -right-32 h-[28rem] w-[28rem]"
+          viewBox="0 0 400 400"
+        >
+          <defs>
+            <filter id="heroBlobA" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="40" />
+            </filter>
+          </defs>
+          <circle
+            cx="200"
+            cy="200"
+            r="160"
+            fill="var(--sage)"
+            opacity="0.16"
+            filter="url(#heroBlobA)"
+          />
+        </svg>
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-20 h-80 w-80"
+          viewBox="0 0 300 300"
+        >
+          <defs>
+            <filter id="heroBlobB" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="36" />
+            </filter>
+          </defs>
+          <circle
+            cx="150"
+            cy="150"
+            r="120"
+            fill="var(--accent)"
+            opacity="0.12"
+            filter="url(#heroBlobB)"
+          />
+        </svg>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6">
-        <section className="grid flex-1 items-center gap-10 py-16 md:grid-cols-2 md:py-24">
+        <header className="relative mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
+          <span className="font-serif text-4xl font-medium tracking-tight">
+            Reciply
+          </span>
+          <nav className="flex items-center gap-5 text-sm">
+            <Link
+              href="/login"
+              className="text-ink-muted transition hover:text-ink"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/login?tab=signup"
+              className="rounded-full bg-accent px-4 py-2 font-medium text-accent-ink transition hover:opacity-90"
+            >
+              Get started
+            </Link>
+          </nav>
+        </header>
+
+        <section className="relative mx-auto grid w-full max-w-5xl items-center gap-10 px-6 py-16 md:grid-cols-2 md:py-24">
           <div>
             <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
               No more &ldquo;what&rsquo;s for dinner&rdquo;
@@ -99,7 +138,9 @@ export default function LandingPage() {
             </p>
           </div>
         </section>
+      </div>
 
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6">
         <section className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <div key={f.tag} className="paper-card rounded-sm p-5">

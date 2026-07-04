@@ -71,6 +71,8 @@ export default async function AppPage() {
       subscriptionStatus={profile?.subscription_status ?? "free"}
       generationsUsedThisWeek={generationsUsedThisWeek ?? 0}
       freeTierWeeklyLimit={FREE_TIER_WEEKLY_LIMIT}
+      initialDietaryPreferences={profile?.dietary_preferences ?? []}
+      initialDietaryNotes={profile?.dietary_notes ?? ""}
     />
   );
 }

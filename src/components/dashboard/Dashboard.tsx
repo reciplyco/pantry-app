@@ -36,6 +36,8 @@ type Props = {
   subscriptionStatus: SubscriptionStatus;
   generationsUsedThisWeek: number;
   freeTierWeeklyLimit: number;
+  initialDietaryPreferences: string[];
+  initialDietaryNotes: string;
 };
 
 export default function Dashboard({
@@ -49,6 +51,8 @@ export default function Dashboard({
   subscriptionStatus,
   generationsUsedThisWeek,
   freeTierWeeklyLimit,
+  initialDietaryPreferences,
+  initialDietaryNotes,
 }: Props) {
   const supabase = createClient();
 
@@ -446,6 +450,8 @@ export default function Dashboard({
             isPro={isPro}
             remaining={remaining}
             freeTierWeeklyLimit={freeTierWeeklyLimit}
+            initialDietaryPreferences={initialDietaryPreferences}
+            initialDietaryNotes={initialDietaryNotes}
           />
         )}
 
