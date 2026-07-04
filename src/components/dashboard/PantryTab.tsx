@@ -104,7 +104,7 @@ export default function PantryTab({
             </button>
           </div>
 
-          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pantryItems.map((item) => {
               const selected = isSelected(item.id);
               return (
