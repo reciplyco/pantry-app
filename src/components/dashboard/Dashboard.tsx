@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, currentWeekStartDateKey, toDateKey } from "@/lib/dates";
 import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
+import AppHeader from "@/components/AppHeader";
 import type {
   Day,
   MealPlanEntryWithRecipe,
@@ -64,7 +65,7 @@ export default function Dashboard({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("pantry");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("generate");
   const [deselectedIds, setDeselectedIds] = useState<Set<string>>(new Set());
   const [customInstructions, setCustomInstructions] = useState("");
 
@@ -392,99 +393,105 @@ export default function Dashboard({
   }
 
   return (
-    <div className="space-y-8">
-      <AppTabs
-        activeTab={activeTab}
-        onChange={setActiveTab}
-        pantryCount={pantryItems.length}
-        selectedCount={selectedNames.length}
-        recipeCount={recipes.length}
-        shoppingCount={shoppingList.length}
-        scheduleCount={mealPlan.length}
-      />
-
-      <OnboardingChecklist
-        hasPantryItems={pantryItems.length > 0}
-        hasRecipes={recipes.length > 0}
-        hasShoppingListItems={shoppingList.length > 0}
-        hasMealPlanEntries={mealPlan.length > 0}
-      />
-
-      <ReminderBanner
-        weekStartDate={weekStartDate}
-        isCurrentWeek={weekStartDate === currentWeekStartDateKey()}
-        hasMealPlanEntries={mealPlan.length > 0}
-      />
-
-      {activeTab === "pantry" && (
-        <PantryTab
-          pantryItems={pantryItems}
-          onAdd={addPantryItem}
-          onRemove={removePantryItem}
-          isSelected={isSelected}
-          onToggleSelected={toggleSelected}
-          allSelected={allSelected}
-          onToggleSelectAll={toggleSelectAll}
-        />
-      )}
-
-      {activeTab === "generate" && (
-        <GenerateTab
-          selectedNames={selectedNames}
-          totalCount={pantryItems.length}
-          customInstructions={customInstructions}
-          onCustomInstructionsChange={setCustomInstructions}
-          onGenerate={handleGenerate}
-          generating={generating}
-          generateError={generateError}
-          isPro={isPro}
-          remaining={remaining}
-          freeTierWeeklyLimit={freeTierWeeklyLimit}
-        />
-      )}
-
-      {activeTab === "search" && (
-        <SearchTab
-          selectedNames={selectedNames}
-          totalPantryCount={pantryItems.length}
-        />
-      )}
-
-      {activeTab === "recipes" && (
-        <RecipeGrid
-          recipes={recipes}
-          onAddToShoppingList={addNeedIngredientsToShoppingList}
-          onAddToMealPlan={addToMealPlan}
-          onToggleShare={toggleShare}
-          onToggleFavorite={toggleFavorite}
-          onDelete={deleteRecipe}
-        />
-      )}
-
-      {activeTab === "shopping" && (
-        <div className="mx-auto max-w-md">
-          <ShoppingList
-            items={shoppingList}
-            onAdd={addShoppingItem}
-            onToggle={toggleShoppingItem}
-            onRemove={removeShoppingItem}
-            onClearChecked={clearCheckedShoppingItems}
+    <>
+      <AppHeader
+        isPro={isPro}
+        tabs={
+          <AppTabs
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            pantryCount={pantryItems.length}
+            selectedCount={selectedNames.length}
+            recipeCount={recipes.length}
+            shoppingCount={shoppingList.length}
+            scheduleCount={mealPlan.length}
           />
-        </div>
-      )}
-
-      {activeTab === "schedule" && (
-        <MealPlanner
-          weekStartDate={weekStartDate}
-          entries={mealPlan}
-          onPrevWeek={() => goToWeek(-1)}
-          onNextWeek={() => goToWeek(1)}
-          onRemoveEntry={removeMealPlanEntry}
-          onShopForWeek={shopForWeek}
+        }
+      />
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-6 sm:px-6 sm:py-8">
+        <OnboardingChecklist
+          hasPantryItems={pantryItems.length > 0}
+          hasRecipes={recipes.length > 0}
+          hasShoppingListItems={shoppingList.length > 0}
+          hasMealPlanEntries={mealPlan.length > 0}
         />
-      )}
 
-      <Toast toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+        <ReminderBanner
+          weekStartDate={weekStartDate}
+          isCurrentWeek={weekStartDate === currentWeekStartDateKey()}
+          hasMealPlanEntries={mealPlan.length > 0}
+        />
+
+        {activeTab === "pantry" && (
+          <PantryTab
+            pantryItems={pantryItems}
+            onAdd={addPantryItem}
+            onRemove={removePantryItem}
+            isSelected={isSelected}
+            onToggleSelected={toggleSelected}
+            allSelected={allSelected}
+            onToggleSelectAll={toggleSelectAll}
+          />
+        )}
+
+        {activeTab === "generate" && (
+          <GenerateTab
+            selectedNames={selectedNames}
+            totalCount={pantryItems.length}
+            customInstructions={customInstructions}
+            onCustomInstructionsChange={setCustomInstructions}
+            onGenerate={handleGenerate}
+            generating={generating}
+            generateError={generateError}
+            isPro={isPro}
+            remaining={remaining}
+            freeTierWeeklyLimit={freeTierWeeklyLimit}
+          />
+        )}
+
+        {activeTab === "search" && (
+          <SearchTab
+            selectedNames={selectedNames}
+            totalPantryCount={pantryItems.length}
+          />
+        )}
+
+        {activeTab === "recipes" && (
+          <RecipeGrid
+            recipes={recipes}
+            onAddToShoppingList={addNeedIngredientsToShoppingList}
+            onAddToMealPlan={addToMealPlan}
+            onToggleShare={toggleShare}
+            onToggleFavorite={toggleFavorite}
+            onDelete={deleteRecipe}
+          />
+        )}
+
+        {activeTab === "shopping" && (
+          <div className="mx-auto max-w-md">
+            <ShoppingList
+              items={shoppingList}
+              onAdd={addShoppingItem}
+              onToggle={toggleShoppingItem}
+              onRemove={removeShoppingItem}
+              onClearChecked={clearCheckedShoppingItems}
+            />
+          </div>
+        )}
+
+        {activeTab === "schedule" && (
+          <MealPlanner
+            weekStartDate={weekStartDate}
+            entries={mealPlan}
+            onPrevWeek={() => goToWeek(-1)}
+            onNextWeek={() => goToWeek(1)}
+            onRemoveEntry={removeMealPlanEntry}
+            onShopForWeek={shopForWeek}
+          />
+        )}
+
+        <Toast toast={toast} onDismiss={() => setToast(null)} />
+      </main>
+    </>
   );
 }

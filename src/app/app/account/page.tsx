@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import AppHeader from "@/components/AppHeader";
 import AccountPanel from "@/components/dashboard/AccountPanel";
 import DietaryPreferencesPanel from "@/components/dashboard/DietaryPreferencesPanel";
 import type { Profile } from "@/lib/types";
@@ -17,15 +18,20 @@ export default async function AccountPage() {
     .eq("id", user.id)
     .single<Profile>();
 
+  const isPro = profile?.subscription_status === "active";
+
   return (
-    <div>
-      <h1 className="font-serif text-3xl font-medium">Account</h1>
-      <p className="mt-2 text-ink-muted">{user.email}</p>
-      <DietaryPreferencesPanel
-        initialPreferences={profile?.dietary_preferences ?? []}
-        initialNotes={profile?.dietary_notes ?? ""}
-      />
-      <AccountPanel />
-    </div>
+    <>
+      <AppHeader isPro={isPro} />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="font-serif text-3xl font-medium">Account</h1>
+        <p className="mt-2 text-ink-muted">{user.email}</p>
+        <DietaryPreferencesPanel
+          initialPreferences={profile?.dietary_preferences ?? []}
+          initialNotes={profile?.dietary_notes ?? ""}
+        />
+        <AccountPanel />
+      </main>
+    </>
   );
 }
