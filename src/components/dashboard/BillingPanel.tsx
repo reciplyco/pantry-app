@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
@@ -23,10 +24,6 @@ type Props = {
   pendingChange: PendingScheduledChange | null;
 };
 
-type ActionResult =
-  | { kind: "upgraded"; tierName: string; amountCharged: number | null }
-  | { kind: "downgraded"; tierName: string; effectiveDate: string };
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
@@ -43,14 +40,19 @@ export default function BillingPanel({
 }: Props) {
   const router = useRouter();
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
-  const [loading, setLoading] = useState<PaidTierId | "portal" | null>(null);
+  const [loading, setLoading] = useState<PaidTierId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<PaidTierId | null>(null);
-  const [actionResult, setActionResult] = useState<ActionResult | null>(null);
+  const [upgraded, setUpgraded] = useState<{
+    tierName: string;
+    amountCharged: number | null;
+  } | null>(null);
 
   // A checkout session creates a *new* subscription — fine when the user
-  // has no paid plan yet, but the wrong tool for moving between paid
-  // tiers (that goes through /api/stripe/change-plan instead, see below).
+  // has no paid plan yet, but the wrong tool for moving between paid tiers
+  // (that goes through /api/stripe/change-plan instead, see below).
+  // Downgrading and managing/canceling an existing subscription live on
+  // the Account settings page instead of here.
   const hasNoPaidPlan = currentTierId === "discovery";
   const currentTier = getTier(currentTierId);
 
@@ -77,10 +79,10 @@ export default function BillingPanel({
     }
   }
 
-  async function changePlan(tierId: PaidTierId) {
+  async function upgrade(tierId: PaidTierId) {
     setLoading(tierId);
     setError(null);
-    setActionResult(null);
+    setUpgraded(null);
     try {
       const res = await fetch("/api/stripe/change-plan", {
         method: "POST",
@@ -93,46 +95,18 @@ export default function BillingPanel({
         setLoading(null);
         return;
       }
-      const tierName = getTier(tierId).name;
-      if (body.kind === "upgraded") {
-        track(AnalyticsEvent.UpgradeClicked, { plan: `${tierId}_${period}_switch` });
-        setActionResult({
-          kind: "upgraded",
-          tierName,
-          amountCharged: body.amountCharged ?? null,
-        });
-      } else {
-        setActionResult({
-          kind: "downgraded",
-          tierName,
-          effectiveDate: body.effectiveDate,
-        });
-      }
+      track(AnalyticsEvent.UpgradeClicked, { plan: `${tierId}_${period}_switch` });
+      setUpgraded({
+        tierName: getTier(tierId).name,
+        amountCharged: body.amountCharged ?? null,
+      });
       setConfirming(null);
       setLoading(null);
-      // The webhook that syncs our tier/pending-change data lands a moment
-      // after Stripe processes this, so give it a beat before refetching.
+      // The webhook that syncs our tier data lands a moment after Stripe
+      // processes this, so give it a beat before refetching.
       setTimeout(() => router.refresh(), 1500);
     } catch {
       setError("Couldn't change your plan. Try again.");
-      setLoading(null);
-    }
-  }
-
-  async function openPortal() {
-    setLoading("portal");
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const body = await res.json();
-      if (!res.ok || !body.url) {
-        setError(body.error ?? "Couldn't open billing portal.");
-        setLoading(null);
-        return;
-      }
-      window.location.assign(body.url);
-    } catch {
-      setError("Couldn't open billing portal.");
       setLoading(null);
     }
   }
@@ -163,22 +137,13 @@ export default function BillingPanel({
           {currentTier.name} feature and benefit until then.
         </div>
       )}
-      {actionResult?.kind === "upgraded" && (
+      {upgraded && (
         <div className="paper-card rounded-sm border-sage/40 p-4 text-sm text-ink">
-          Upgraded to <strong>{actionResult.tierName}</strong>! It&rsquo;s
-          active right away.{" "}
-          {actionResult.amountCharged !== null
-            ? `We credited what you'd already paid this cycle and charged you $${actionResult.amountCharged.toFixed(2)} today for the prorated difference.`
+          Upgraded to <strong>{upgraded.tierName}</strong>! It&rsquo;s active
+          right away.{" "}
+          {upgraded.amountCharged !== null
+            ? `We credited what you'd already paid this cycle and charged you $${upgraded.amountCharged.toFixed(2)} today for the prorated difference.`
             : "The prorated difference for the rest of this cycle was charged today."}
-        </div>
-      )}
-      {actionResult?.kind === "downgraded" && (
-        <div className="paper-card rounded-sm border-sage/40 p-4 text-sm text-ink">
-          Got it — you&rsquo;re moving to{" "}
-          <strong>{actionResult.tierName}</strong> on{" "}
-          {formatDate(actionResult.effectiveDate)}. Nothing changes today:
-          you&rsquo;ll keep all your current plan&rsquo;s features and
-          benefits until then.
         </div>
       )}
 
@@ -289,22 +254,18 @@ export default function BillingPanel({
                 {isConfirming ? (
                   <div className="space-y-2">
                     <p className="text-xs text-ink-muted">
-                      {isUpgradeTarget
-                        ? `Takes effect right away — we'll credit what you've already paid this cycle and charge you the prorated difference today.`
-                        : `Won't take effect until your billing period ends${periodEndLabel ? ` on ${periodEndLabel}` : ""}. You'll keep every ${currentTier.name} feature until then — nothing changes today.`}
+                      Takes effect right away — we&rsquo;ll credit what
+                      you&rsquo;ve already paid this cycle and charge you
+                      the prorated difference today.
                     </p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         disabled={loading !== null}
-                        onClick={() => changePlan(tier.id as PaidTierId)}
+                        onClick={() => upgrade(tier.id as PaidTierId)}
                         className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {loading === tier.id
-                          ? "Working…"
-                          : isUpgradeTarget
-                            ? "Confirm upgrade"
-                            : "Confirm downgrade"}
+                        {loading === tier.id ? "Working…" : "Confirm upgrade"}
                       </button>
                       <button
                         type="button"
@@ -333,14 +294,12 @@ export default function BillingPanel({
                     Scheduled for {formatDate(pendingChange!.effectiveDate)}
                   </button>
                 ) : tier.id === "discovery" ? (
-                  <button
-                    type="button"
-                    disabled={loading !== null}
-                    onClick={openPortal}
-                    className="w-full rounded-full border border-line px-5 py-2.5 text-sm font-medium transition hover:border-ink disabled:opacity-50"
+                  <Link
+                    href="/app/account"
+                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
                   >
-                    {loading === "portal" ? "Opening…" : "Manage subscription"}
-                  </button>
+                    Manage in Account settings →
+                  </Link>
                 ) : hasNoPaidPlan ? (
                   <button
                     type="button"
@@ -354,7 +313,7 @@ export default function BillingPanel({
                   >
                     {loading === tier.id ? "Redirecting…" : "Upgrade"}
                   </button>
-                ) : (
+                ) : isUpgradeTarget ? (
                   <button
                     type="button"
                     disabled={loading !== null}
@@ -365,8 +324,15 @@ export default function BillingPanel({
                         : "border border-line hover:border-ink"
                     }`}
                   >
-                    {isUpgradeTarget ? "Upgrade" : "Downgrade"}
+                    Upgrade
                   </button>
+                ) : (
+                  <Link
+                    href="/app/account"
+                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
+                  >
+                    Downgrade in Account settings →
+                  </Link>
                 )}
               </div>
             </div>
