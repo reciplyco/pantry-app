@@ -19,9 +19,17 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
 });
 
 export function mapStripeStatus(
-  status: Stripe.Subscription.Status
+  subscription: Stripe.Subscription
 ): SubscriptionStatus {
-  switch (status) {
+  // A cancellation from the Stripe billing portal sets cancel_at_period_end
+  // rather than changing status — Stripe's status stays "active" right up
+  // until the subscription actually ends. Treat that the same as "canceled"
+  // so the UI can tell the customer right away, instead of only once the
+  // subscription is gone for good.
+  if (subscription.cancel_at_period_end) {
+    return "canceled";
+  }
+  switch (subscription.status) {
     case "active":
     case "trialing":
       return "active";

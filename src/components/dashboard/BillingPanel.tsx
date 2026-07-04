@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
@@ -55,6 +54,21 @@ export default function BillingPanel({
   // the Account settings page instead of here.
   const hasNoPaidPlan = currentTierId === "discovery";
   const currentTier = getTier(currentTierId);
+
+  // Downgrades live on the Account settings page, not here — this tab is
+  // "your plan, and what you could upgrade to," so tiers ranked below the
+  // current one are left off entirely instead of shown with a downgrade
+  // link. (A standalone plans page for signed-out visitors is coming
+  // separately; this tab doesn't need to double as that.)
+  const visibleTiers = TIERS.filter(
+    (t) => t.id === currentTierId || tierRank(t.id) > tierRank(currentTierId)
+  );
+  const gridColsClass: Record<number, string> = {
+    1: "sm:grid-cols-1 lg:grid-cols-1",
+    2: "sm:grid-cols-2 lg:grid-cols-2",
+    3: "sm:grid-cols-2 lg:grid-cols-3",
+    4: "sm:grid-cols-2 lg:grid-cols-4",
+  };
 
   async function checkout(tierId: PaidTierId) {
     setLoading(tierId);
@@ -179,15 +193,17 @@ export default function BillingPanel({
         </span>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {TIERS.map((tier) => {
+      <div
+        className={`grid gap-5 ${gridColsClass[visibleTiers.length] ?? gridColsClass[4]} ${
+          visibleTiers.length === 1 ? "mx-auto max-w-sm" : ""
+        }`}
+      >
+        {visibleTiers.map((tier) => {
           const isCurrent = tier.id === currentTierId;
           const isPending =
             pendingChange !== null && pendingChange.tier === tier.id;
           const isConfirming = confirming === tier.id;
-          const isUpgradeTarget =
-            tier.id !== "discovery" &&
-            tierRank(tier.id) > tierRank(currentTierId);
+          const showRecommended = tier.recommended && !isCurrent;
           const displayPrice =
             tier.monthlyPrice === 0
               ? 0
@@ -199,12 +215,12 @@ export default function BillingPanel({
             <div
               key={tier.id}
               className={`paper-card relative flex flex-col rounded-sm p-6 ${
-                tier.recommended
+                showRecommended
                   ? "border-2 border-accent shadow-lg sm:-translate-y-2"
                   : ""
               }`}
             >
-              {tier.recommended && (
+              {showRecommended && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent px-3 py-1 font-mono text-xs font-medium uppercase tracking-widest text-accent-ink shadow-sm">
                   ★ Recommended
                 </span>
@@ -293,46 +309,36 @@ export default function BillingPanel({
                   >
                     Scheduled for {formatDate(pendingChange!.effectiveDate)}
                   </button>
-                ) : tier.id === "discovery" ? (
-                  <Link
-                    href="/app/account"
-                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
-                  >
-                    Manage in Account settings →
-                  </Link>
                 ) : hasNoPaidPlan ? (
                   <button
                     type="button"
                     disabled={loading !== null}
                     onClick={() => checkout(tier.id as PaidTierId)}
                     className={`w-full rounded-full px-5 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                      tier.recommended
+                      showRecommended
                         ? "bg-accent text-accent-ink hover:opacity-90"
                         : "border border-line hover:border-ink"
                     }`}
                   >
                     {loading === tier.id ? "Redirecting…" : "Upgrade"}
                   </button>
-                ) : isUpgradeTarget ? (
+                ) : (
+                  // Every remaining tier ranks above currentTierId (see
+                  // visibleTiers) and currentTierId is a paid plan (the
+                  // hasNoPaidPlan case above already handled the free-plan
+                  // checkout path), so anything left here is an upgrade.
                   <button
                     type="button"
                     disabled={loading !== null}
                     onClick={() => setConfirming(tier.id as PaidTierId)}
                     className={`w-full rounded-full px-5 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                      tier.recommended
+                      showRecommended
                         ? "bg-accent text-accent-ink hover:opacity-90"
                         : "border border-line hover:border-ink"
                     }`}
                   >
                     Upgrade
                   </button>
-                ) : (
-                  <Link
-                    href="/app/account"
-                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
-                  >
-                    Downgrade in Account settings →
-                  </Link>
                 )}
               </div>
             </div>

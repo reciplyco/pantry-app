@@ -23,7 +23,7 @@ async function syncSubscription(subscription: Stripe.Subscription) {
     .eq("stripe_customer_id", customerId)
     .single();
 
-  const newStatus = mapStripeStatus(subscription.status);
+  const newStatus = mapStripeStatus(subscription);
   const priceId = subscription.items.data[0]?.price.id;
   const tier = priceId ? tierForPriceId(priceId) : null;
 

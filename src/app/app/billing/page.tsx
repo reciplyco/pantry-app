@@ -22,7 +22,8 @@ export default async function BillingPage() {
   const subscriptionStatus = profile?.subscription_status ?? "free";
   const currentTierId = effectiveTierId(
     subscriptionStatus,
-    profile?.subscription_tier
+    profile?.subscription_tier,
+    profile?.subscription_current_period_end
   );
 
   const pendingChange =

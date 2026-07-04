@@ -59,7 +59,14 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .single<Profile>();
 
-  if (!profile?.stripe_customer_id || profile.subscription_status !== "active") {
+  // "canceled" here just means cancel-at-period-end (see mapStripeStatus) —
+  // the Stripe subscription is still live and modifiable until the period
+  // actually ends, so a change of heart can still upgrade/downgrade out of
+  // the pending cancellation instead of being stuck until it lapses.
+  const hasChangeableSubscription =
+    profile?.subscription_status === "active" ||
+    profile?.subscription_status === "canceled";
+  if (!profile?.stripe_customer_id || !hasChangeableSubscription) {
     return NextResponse.json(
       {
         error:
