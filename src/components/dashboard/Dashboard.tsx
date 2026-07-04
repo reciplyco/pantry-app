@@ -12,13 +12,16 @@ import type {
   ShoppingListItem,
   SubscriptionStatus,
 } from "@/lib/types";
-import PantryPanel from "./PantryPanel";
+import { DAY_LABELS } from "@/lib/types";
+import PantryTab from "./PantryTab";
+import GenerateTab from "./GenerateTab";
 import RecipeGrid from "./RecipeGrid";
 import ShoppingList from "./ShoppingList";
 import MealPlanner from "./MealPlanner";
 import OnboardingChecklist from "./OnboardingChecklist";
 import ReminderBanner from "./ReminderBanner";
 import Toast, { type ToastState } from "./Toast";
+import AppTabs, { type DashboardTab } from "./AppTabs";
 
 type Props = {
   userId: string;
@@ -60,9 +63,40 @@ export default function Dashboard({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("pantry");
+  const [deselectedIds, setDeselectedIds] = useState<Set<string>>(new Set());
+  const [customInstructions, setCustomInstructions] = useState("");
 
   const isPro = subscriptionStatus === "active";
   const remaining = Math.max(0, freeTierWeeklyLimit - usedThisWeek);
+
+  function isSelected(id: string) {
+    return !deselectedIds.has(id);
+  }
+
+  function toggleSelected(id: string) {
+    setDeselectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const allSelected = pantryItems.every((item) => isSelected(item.id));
+
+  function toggleSelectAll() {
+    setDeselectedIds(
+      allSelected ? new Set(pantryItems.map((item) => item.id)) : new Set()
+    );
+  }
+
+  const selectedNames = pantryItems
+    .filter((item) => isSelected(item.id))
+    .map((item) => item.name);
 
   function showToast(message: string, onUndo?: () => void) {
     setToast({ id: Date.now(), message, onUndo });
@@ -91,10 +125,7 @@ export default function Dashboard({
     }
   }
 
-  async function handleGenerate(
-    selectedNames: string[],
-    customInstructions: string
-  ) {
+  async function handleGenerate() {
     if (selectedNames.length === 0) {
       setGenerateError("Select at least one pantry item first.");
       return;
@@ -120,6 +151,10 @@ export default function Dashboard({
       track(AnalyticsEvent.RecipeGenerated, {
         count: (body.recipes as Recipe[]).length,
       });
+      // Recipes now live on their own tab — jump there so the results of
+      // clicking Generate are actually visible instead of appearing to
+      // do nothing.
+      setActiveTab("recipes");
     } catch {
       setGenerateError("Something went wrong. Please try again.");
     } finally {
@@ -201,7 +236,10 @@ export default function Dashboard({
         quantity: ing.quantity || null,
         source_recipe_id: recipe.id,
       }));
-    if (toInsert.length === 0) return;
+    if (toInsert.length === 0) {
+      showToast("Already on your shopping list.");
+      return;
+    }
     const { data, error } = await supabase
       .from("shopping_list_items")
       .insert(toInsert)
@@ -210,6 +248,11 @@ export default function Dashboard({
     if (!error && data) {
       setShoppingList((prev) => [...prev, ...data]);
       track(AnalyticsEvent.ShoppingListItemAdded, { count: data.length });
+      // Shopping List is its own tab now, so without a toast this action
+      // would have no visible confirmation at all.
+      showToast(
+        `Added ${data.length} item${data.length === 1 ? "" : "s"} to shopping list`
+      );
     }
   }
 
@@ -282,6 +325,9 @@ export default function Dashboard({
     if (!error && data) {
       setMealPlan((prev) => [...prev, data]);
       track(AnalyticsEvent.MealPlanEntryAdded);
+      // Schedule is its own tab now, so without a toast this action would
+      // have no visible confirmation at all.
+      showToast(`Added "${data.recipe?.title ?? "recipe"}" to ${DAY_LABELS[day]}`);
     }
   }
 
@@ -345,33 +391,22 @@ export default function Dashboard({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      <AppTabs
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        pantryCount={pantryItems.length}
+        selectedCount={selectedNames.length}
+        recipeCount={recipes.length}
+        shoppingCount={shoppingList.length}
+        scheduleCount={mealPlan.length}
+      />
+
       <OnboardingChecklist
         hasPantryItems={pantryItems.length > 0}
         hasRecipes={recipes.length > 0}
         hasShoppingListItems={shoppingList.length > 0}
         hasMealPlanEntries={mealPlan.length > 0}
-      />
-
-      <PantryPanel
-        pantryItems={pantryItems}
-        onAdd={addPantryItem}
-        onRemove={removePantryItem}
-        onGenerate={handleGenerate}
-        generating={generating}
-        generateError={generateError}
-        isPro={isPro}
-        remaining={remaining}
-        freeTierWeeklyLimit={freeTierWeeklyLimit}
-      />
-
-      <RecipeGrid
-        recipes={recipes}
-        onAddToShoppingList={addNeedIngredientsToShoppingList}
-        onAddToMealPlan={addToMealPlan}
-        onToggleShare={toggleShare}
-        onToggleFavorite={toggleFavorite}
-        onDelete={deleteRecipe}
       />
 
       <ReminderBanner
@@ -380,14 +415,57 @@ export default function Dashboard({
         hasMealPlanEntries={mealPlan.length > 0}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_2fr]">
-        <ShoppingList
-          items={shoppingList}
-          onAdd={addShoppingItem}
-          onToggle={toggleShoppingItem}
-          onRemove={removeShoppingItem}
-          onClearChecked={clearCheckedShoppingItems}
+      {activeTab === "pantry" && (
+        <PantryTab
+          pantryItems={pantryItems}
+          onAdd={addPantryItem}
+          onRemove={removePantryItem}
+          isSelected={isSelected}
+          onToggleSelected={toggleSelected}
+          allSelected={allSelected}
+          onToggleSelectAll={toggleSelectAll}
         />
+      )}
+
+      {activeTab === "generate" && (
+        <GenerateTab
+          selectedNames={selectedNames}
+          totalCount={pantryItems.length}
+          customInstructions={customInstructions}
+          onCustomInstructionsChange={setCustomInstructions}
+          onGenerate={handleGenerate}
+          generating={generating}
+          generateError={generateError}
+          isPro={isPro}
+          remaining={remaining}
+          freeTierWeeklyLimit={freeTierWeeklyLimit}
+        />
+      )}
+
+      {activeTab === "recipes" && (
+        <RecipeGrid
+          recipes={recipes}
+          onAddToShoppingList={addNeedIngredientsToShoppingList}
+          onAddToMealPlan={addToMealPlan}
+          onToggleShare={toggleShare}
+          onToggleFavorite={toggleFavorite}
+          onDelete={deleteRecipe}
+        />
+      )}
+
+      {activeTab === "shopping" && (
+        <div className="mx-auto max-w-md">
+          <ShoppingList
+            items={shoppingList}
+            onAdd={addShoppingItem}
+            onToggle={toggleShoppingItem}
+            onRemove={removeShoppingItem}
+            onClearChecked={clearCheckedShoppingItems}
+          />
+        </div>
+      )}
+
+      {activeTab === "schedule" && (
         <MealPlanner
           weekStartDate={weekStartDate}
           entries={mealPlan}
@@ -396,7 +474,7 @@ export default function Dashboard({
           onRemoveEntry={removeMealPlanEntry}
           onShopForWeek={shopForWeek}
         />
-      </div>
+      )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
