@@ -58,28 +58,35 @@ export default function AppTabs({
 
   return (
     <div className="relative">
-      <nav className="flex overflow-x-auto rounded-sm border border-line shadow-sm">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onChange(tab.id)}
-            aria-current={activeTab === tab.id}
-            className={`flex-1 whitespace-nowrap border-b-[3px] px-3 py-3 text-left font-serif text-base font-medium transition sm:px-5 sm:py-5 sm:text-lg lg:text-xl ${
-              activeTab === tab.id
-                ? "border-accent bg-card text-ink"
-                : "border-line bg-paper-alt text-ink-muted hover:text-ink"
-            }`}
-          >
-            <span className="sm:hidden">{tab.shortLabel}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
-            {tab.count > 0 && (
-              <span className="ml-1.5 hidden font-mono text-sm text-ink-muted sm:inline">
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
+      <nav className="flex items-center gap-1 overflow-x-auto sm:gap-1.5">
+        {tabs.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              aria-current={active}
+              className={`whitespace-nowrap rounded-full px-4 py-2 font-serif text-sm font-medium transition sm:px-5 sm:py-2.5 sm:text-base ${
+                active
+                  ? "bg-accent text-accent-ink"
+                  : "text-ink-muted hover:bg-paper-alt hover:text-ink"
+              }`}
+            >
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              {tab.count > 0 && (
+                <span
+                  className={`ml-1.5 hidden font-mono text-xs sm:inline ${
+                    active ? "text-accent-ink/75" : "text-ink-muted"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
       {/* Hints that the tab bar scrolls horizontally on narrow screens,
           where all 5 tabs don't necessarily fit at once. */}
