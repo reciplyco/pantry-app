@@ -12,6 +12,8 @@ export const AnalyticsEvent = {
   ShoppingListItemAdded: "shopping_list_item_added",
   MealPlanEntryAdded: "meal_plan_entry_added",
   RecipeShared: "recipe_shared",
+  RecipeSearchPerformed: "recipe_search_performed",
+  ExternalRecipeViewed: "external_recipe_viewed",
   UpgradeClicked: "upgrade_clicked",
   SubscriptionUpgraded: "subscription_upgraded",
 } as const;

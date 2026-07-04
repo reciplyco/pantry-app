@@ -15,6 +15,7 @@ import type {
 import { DAY_LABELS } from "@/lib/types";
 import PantryTab from "./PantryTab";
 import GenerateTab from "./GenerateTab";
+import SearchTab from "./SearchTab";
 import RecipeGrid from "./RecipeGrid";
 import ShoppingList from "./ShoppingList";
 import MealPlanner from "./MealPlanner";
@@ -439,6 +440,13 @@ export default function Dashboard({
           isPro={isPro}
           remaining={remaining}
           freeTierWeeklyLimit={freeTierWeeklyLimit}
+        />
+      )}
+
+      {activeTab === "search" && (
+        <SearchTab
+          selectedNames={selectedNames}
+          totalPantryCount={pantryItems.length}
         />
       )}
 

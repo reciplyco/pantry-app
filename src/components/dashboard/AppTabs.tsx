@@ -3,6 +3,7 @@
 export type DashboardTab =
   | "pantry"
   | "generate"
+  | "search"
   | "recipes"
   | "shopping"
   | "schedule";
@@ -39,6 +40,7 @@ export default function AppTabs({
       shortLabel: "Generate",
       count: selectedCount,
     },
+    { id: "search", label: "Search", shortLabel: "Search", count: 0 },
     { id: "recipes", label: "Recipes", shortLabel: "Recipes", count: recipeCount },
     {
       id: "shopping",

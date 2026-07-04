@@ -104,3 +104,55 @@ export type MealPlanEntryWithRecipe = MealPlanEntry & {
 };
 
 export const FREE_TIER_WEEKLY_LIMIT = 3;
+
+export const SEARCH_TIME_OPTIONS = [15, 30, 60] as const;
+
+export const SEARCH_CUISINE_OPTIONS = [
+  "Italian",
+  "Mexican",
+  "Thai",
+  "Chinese",
+  "Indian",
+  "French",
+  "Japanese",
+  "Mediterranean",
+  "American",
+  "Greek",
+] as const;
+
+export const SEARCH_METHOD_OPTIONS = [
+  { value: "bake", label: "Bake" },
+  { value: "stovetop", label: "Stovetop" },
+  { value: "slow cooker", label: "Slow cooker" },
+  { value: "air fryer", label: "Air fryer" },
+  { value: "grill", label: "Grill" },
+  { value: "no-cook", label: "No-cook" },
+] as const;
+
+export const SEARCH_DIET_OPTIONS = [
+  { value: "vegan", label: "Vegan" },
+  { value: "vegetarian", label: "Vegetarian" },
+  { value: "pescatarian", label: "Pescatarian" },
+  { value: "gluten-free", label: "Gluten-free" },
+  { value: "dairy-free", label: "Dairy-free" },
+  { value: "nut-free", label: "Nut-free" },
+  { value: "keto", label: "Keto" },
+] as const;
+
+export type SearchSort = "match" | "time" | "popularity";
+
+export type SearchRecipeResult = {
+  id: number;
+  title: string;
+  sourceName: string | null;
+  sourceUrl: string;
+  image: string | null;
+  matchPercent: number;
+  matchedIngredients: string[];
+  missingIngredients: string[];
+  readyInMinutes: number | null;
+  popularity: number;
+  cuisines: string[];
+  dishTypes: string[];
+  diets: string[];
+};
