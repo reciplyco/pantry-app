@@ -69,7 +69,7 @@ export default function PantryPanel({
         />
         <button
           type="submit"
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink"
+          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink active:scale-95"
         >
           Add
         </button>
@@ -80,7 +80,7 @@ export default function PantryPanel({
           {pantryItems.map((item) => (
             <li
               key={item.id}
-              className="flex items-center gap-2 rounded-full border border-line bg-paper-alt px-3 py-1 text-sm"
+              className="anim-fade-in-up flex items-center gap-2 rounded-full border border-line bg-paper-alt px-3 py-1 text-sm"
             >
               {item.name}
               <button
@@ -105,9 +105,20 @@ export default function PantryPanel({
           type="button"
           onClick={onGenerate}
           disabled={generating || isCapped}
-          className="rounded-full bg-accent px-6 py-2.5 font-medium text-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full bg-accent px-6 py-2.5 font-medium text-accent-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
         >
-          {generating ? "Cooking up ideas…" : "Generate recipes"}
+          {generating ? (
+            <span className="inline-flex items-center gap-1">
+              Cooking up ideas
+              <span className="inline-flex gap-0.5">
+                <span className="anim-bounce-dot h-1 w-1 rounded-full bg-accent-ink" />
+                <span className="anim-bounce-dot h-1 w-1 rounded-full bg-accent-ink" />
+                <span className="anim-bounce-dot h-1 w-1 rounded-full bg-accent-ink" />
+              </span>
+            </span>
+          ) : (
+            "Generate recipes"
+          )}
         </button>
         {isCapped && (
           <Link

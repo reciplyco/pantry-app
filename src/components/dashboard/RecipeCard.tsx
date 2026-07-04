@@ -5,6 +5,7 @@ import { DAYS, DAY_LABELS, stripStepNumber, type Day, type Recipe } from "@/lib/
 
 type Props = {
   recipe: Recipe;
+  index?: number;
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
@@ -13,6 +14,7 @@ type Props = {
 
 export default function RecipeCard({
   recipe,
+  index = 0,
   onAddToShoppingList,
   onAddToMealPlan,
   onToggleShare,
@@ -25,8 +27,11 @@ export default function RecipeCard({
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
+  const [pop, setPop] = useState(false);
 
   async function handleToggleFavorite() {
+    setPop(true);
+    setTimeout(() => setPop(false), 350);
     setFavoriting(true);
     await onToggleFavorite(recipe);
     setFavoriting(false);
@@ -51,7 +56,10 @@ export default function RecipeCard({
   }
 
   return (
-    <article className="paper-card flex flex-col rounded-sm p-5">
+    <article
+      className="paper-card anim-fade-in-up flex flex-col rounded-sm p-5"
+      style={{ "--anim-delay": `${Math.min(index, 8) * 0.06}s` } as React.CSSProperties}
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-serif text-xl font-medium leading-snug">
           {recipe.title}
@@ -64,7 +72,7 @@ export default function RecipeCard({
             recipe.is_favorite ? "Remove from favorites" : "Add to favorites"
           }
           aria-pressed={recipe.is_favorite}
-          className={`shrink-0 text-xl leading-none transition disabled:opacity-50 ${
+          className={`shrink-0 text-xl leading-none transition disabled:opacity-50 ${pop ? "anim-pop" : ""} ${
             recipe.is_favorite
               ? "text-accent"
               : "text-line hover:text-ink-muted"
@@ -112,19 +120,27 @@ export default function RecipeCard({
         </div>
       )}
 
-      {expanded && recipe.steps?.length > 0 && (
-        <ol className="mt-4 list-decimal space-y-2 pl-4 text-sm text-ink">
-          {recipe.steps.map((step, i) => (
-            <li key={i}>{stripStepNumber(step)}</li>
-          ))}
-        </ol>
+      {recipe.steps?.length > 0 && (
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <ol className="mt-4 list-decimal space-y-2 pl-4 text-sm text-ink">
+              {recipe.steps.map((step, i) => (
+                <li key={i}>{stripStepNumber(step)}</li>
+              ))}
+            </ol>
+          </div>
+        </div>
       )}
 
       <div className="mt-3 flex items-center gap-4">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-sm font-medium text-accent underline underline-offset-2"
+          className="text-sm font-medium text-accent underline underline-offset-2 transition active:scale-95"
         >
           {expanded ? "Hide recipe" : "View recipe"}
         </button>
@@ -132,7 +148,7 @@ export default function RecipeCard({
           type="button"
           disabled={sharing}
           onClick={handleToggleShare}
-          className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink disabled:opacity-50"
+          className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink active:scale-95 disabled:opacity-50"
         >
           {sharing
             ? "…"
@@ -143,7 +159,7 @@ export default function RecipeCard({
       </div>
 
       {shareUrl && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="anim-fade-in mt-2 flex items-center gap-2">
           <input
             type="text"
             readOnly
@@ -154,7 +170,7 @@ export default function RecipeCard({
           <button
             type="button"
             onClick={handleCopyLink}
-            className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-medium transition hover:border-ink"
+            className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-medium transition hover:border-ink active:scale-95"
           >
             {copied ? "Copied!" : "Copy"}
           </button>
@@ -170,7 +186,7 @@ export default function RecipeCard({
             await onAddToShoppingList(recipe);
             setAddingToList(false);
           }}
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
         >
           {addingToList ? "Adding…" : "Add missing to shopping list"}
         </button>
@@ -195,7 +211,7 @@ export default function RecipeCard({
               await onAddToMealPlan(recipe.id, day);
               setAddingToPlan(false);
             }}
-            className="flex-1 rounded-full bg-sage px-4 py-2 text-sm font-medium text-sage-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-full bg-sage px-4 py-2 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
           >
             {addingToPlan ? "Adding…" : "Add to plan"}
           </button>

@@ -44,6 +44,112 @@ body {
   background-color: var(--card);
   border: 1px solid var(--line);
   box-shadow: 0 1px 0 rgba(43, 36, 28, 0.04), 0 8px 20px -12px rgba(43, 36, 28, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.paper-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 rgba(43, 36, 28, 0.04), 0 14px 28px -14px rgba(43, 36, 28, 0.45);
+}
+
+/* Animations — subtle and tactile, like paper settling into place. */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.anim-fade-in-up {
+  animation: fade-in-up 0.4s ease backwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+.anim-fade-in {
+  animation: fade-in 0.3s ease backwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+.anim-pop {
+  animation: pop 0.35s ease;
+}
+
+.anim-toast-in {
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bounce-dot {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.anim-bounce-dot {
+  animation: bounce-dot 1.2s ease-in-out infinite;
+}
+
+.anim-bounce-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.anim-bounce-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper-card,
+  .anim-fade-in-up,
+  .anim-fade-in,
+  .anim-pop,
+  .anim-toast-in,
+  .anim-bounce-dot {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .receipt {

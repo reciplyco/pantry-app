@@ -69,15 +69,15 @@ export default function OnboardingChecklist({
         {steps.map((step) => (
           <li key={step.label} className="flex items-center gap-2 text-sm">
             <span
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] transition-all duration-300 ${
                 step.done
-                  ? "border-sage bg-sage text-sage-ink"
+                  ? "scale-110 border-sage bg-sage text-sage-ink"
                   : "border-line text-transparent"
               }`}
             >
               ✓
             </span>
-            <span className={step.done ? "text-ink-muted line-through" : "text-ink"}>
+            <span className="text-ink transition-colors duration-300 data-[done=true]:text-ink-muted data-[done=true]:line-through" data-done={step.done}>
               {step.label}
             </span>
           </li>

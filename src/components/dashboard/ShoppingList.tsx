@@ -50,17 +50,17 @@ export default function ShoppingList({
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex h-7 items-center justify-between gap-2"
+                className="anim-fade-in-up flex h-7 items-center justify-between gap-2"
               >
                 <label className="flex min-w-0 flex-1 items-center gap-2">
                   <input
                     type="checkbox"
                     checked={item.checked}
                     onChange={(e) => onToggle(item.id, e.target.checked)}
-                    className="accent-accent"
+                    className="accent-accent transition-transform active:scale-90"
                   />
                   <span
-                    className={`truncate ${
+                    className={`truncate transition-colors duration-300 ${
                       item.checked ? "text-ink-muted line-through" : "text-ink"
                     }`}
                   >
@@ -72,7 +72,7 @@ export default function ShoppingList({
                   type="button"
                   onClick={() => onRemove(item.id)}
                   aria-label={`Remove ${item.name}`}
-                  className="text-ink-muted transition hover:text-accent"
+                  className="text-ink-muted transition hover:text-accent active:scale-90"
                 >
                   ×
                 </button>
@@ -100,7 +100,7 @@ export default function ShoppingList({
           />
           <button
             type="submit"
-            className="rounded-full border border-line px-3 py-1 text-xs transition hover:border-ink"
+            className="rounded-full border border-line px-3 py-1 text-xs transition hover:border-ink active:scale-95"
           >
             Add
           </button>
@@ -110,7 +110,7 @@ export default function ShoppingList({
           <button
             type="button"
             onClick={onClearChecked}
-            className="mt-4 w-full text-center text-xs text-ink-muted underline underline-offset-2"
+            className="anim-fade-in mt-4 w-full text-center text-xs text-ink-muted underline underline-offset-2 transition active:scale-95"
           >
             Clear checked items
           </button>

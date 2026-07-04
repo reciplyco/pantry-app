@@ -40,7 +40,7 @@ export default function MealPlanner({
             type="button"
             onClick={onPrevWeek}
             aria-label="Previous week"
-            className="rounded-full border border-line px-2 py-1 transition hover:border-ink"
+            className="rounded-full border border-line px-2 py-1 transition hover:border-ink active:scale-90"
           >
             ‹
           </button>
@@ -51,7 +51,7 @@ export default function MealPlanner({
             type="button"
             onClick={onNextWeek}
             aria-label="Next week"
-            className="rounded-full border border-line px-2 py-1 transition hover:border-ink"
+            className="rounded-full border border-line px-2 py-1 transition hover:border-ink active:scale-90"
           >
             ›
           </button>
@@ -61,7 +61,7 @@ export default function MealPlanner({
             type="button"
             disabled={shopping}
             onClick={handleShopForWeek}
-            className="rounded-full bg-sage px-4 py-1.5 text-sm font-medium text-sage-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-sage px-4 py-1.5 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
           >
             {shopping ? "Adding…" : "Shop for the week"}
           </button>
@@ -72,7 +72,10 @@ export default function MealPlanner({
         {DAYS.map((day) => {
           const dayEntries = entries.filter((e) => e.day === day);
           return (
-            <div key={day} className="paper-card rounded-sm p-3">
+            <div
+              key={day}
+              className="rounded-sm border border-line bg-card p-3 shadow-sm"
+            >
               <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
                 {DAY_LABELS[day].slice(0, 3)}
               </p>
@@ -83,7 +86,7 @@ export default function MealPlanner({
                 {dayEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="rounded-sm border border-line bg-paper-alt px-2 py-1.5 text-xs"
+                    className="anim-fade-in-up rounded-sm border border-line bg-paper-alt px-2 py-1.5 text-xs"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="leading-snug">
@@ -93,7 +96,7 @@ export default function MealPlanner({
                         type="button"
                         onClick={() => onRemoveEntry(entry.id)}
                         aria-label="Remove from plan"
-                        className="shrink-0 text-ink-muted transition hover:text-accent"
+                        className="shrink-0 text-ink-muted transition hover:text-accent active:scale-90"
                       >
                         ×
                       </button>

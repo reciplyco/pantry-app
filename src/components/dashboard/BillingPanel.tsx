@@ -107,7 +107,7 @@ export default function BillingPanel({
             type="button"
             onClick={openPortal}
             disabled={loading === "portal"}
-            className="mt-4 rounded-full border border-line px-5 py-2 text-sm font-medium transition hover:border-ink disabled:opacity-50"
+            className="mt-4 rounded-full border border-line px-5 py-2 text-sm font-medium transition hover:border-ink active:scale-95 disabled:active:scale-100 disabled:opacity-50"
           >
             {loading === "portal" ? "Opening…" : "Manage subscription"}
           </button>
@@ -125,7 +125,7 @@ export default function BillingPanel({
               type="button"
               onClick={() => upgrade("monthly")}
               disabled={loading !== null}
-              className="mt-4 w-full rounded-full bg-accent px-5 py-2.5 font-medium text-accent-ink transition hover:opacity-90 disabled:opacity-50"
+              className="mt-4 w-full rounded-full bg-accent px-5 py-2.5 font-medium text-accent-ink transition hover:opacity-90 active:scale-95 disabled:active:scale-100 disabled:opacity-50"
             >
               {loading === "monthly" ? "Redirecting…" : "Upgrade monthly"}
             </button>
@@ -140,7 +140,7 @@ export default function BillingPanel({
               type="button"
               onClick={() => upgrade("yearly")}
               disabled={loading !== null}
-              className="mt-4 w-full rounded-full bg-accent px-5 py-2.5 font-medium text-accent-ink transition hover:opacity-90 disabled:opacity-50"
+              className="mt-4 w-full rounded-full bg-accent px-5 py-2.5 font-medium text-accent-ink transition hover:opacity-90 active:scale-95 disabled:active:scale-100 disabled:opacity-50"
             >
               {loading === "yearly" ? "Redirecting…" : "Upgrade yearly"}
             </button>
