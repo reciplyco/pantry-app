@@ -34,7 +34,7 @@ export default function GenerateTab({
   const hasSelection = selectedNames.length > 0;
 
   return (
-    <div>
+    <div className="flex min-h-[65vh] flex-col justify-center">
       <div className="mb-8 text-center">
         <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
           Cook what you already have
