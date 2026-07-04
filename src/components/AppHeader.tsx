@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { getTier } from "@/lib/pricing";
@@ -15,8 +16,9 @@ export default function AppHeader({ tierId, tabs }: Props) {
   const logo = (
     <Link
       href="/app"
-      className="shrink-0 font-serif text-2xl font-medium tracking-tight text-accent-ink sm:text-3xl"
+      className="flex shrink-0 items-center gap-2 font-serif text-2xl font-medium tracking-tight text-accent-ink sm:text-3xl"
     >
+      <Image src="/logo-mark.png" alt="" width={32} height={36} className="h-8 w-auto sm:h-9" />
       Reciply
     </Link>
   );

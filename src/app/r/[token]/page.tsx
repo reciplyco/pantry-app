@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -32,8 +33,9 @@ export default async function SharedRecipePage({
     <div className="flex min-h-full flex-col items-center px-6 py-16">
       <Link
         href="/"
-        className="mb-8 font-serif text-4xl font-medium tracking-tight"
+        className="mb-8 flex items-center gap-2 font-serif text-4xl font-medium tracking-tight"
       >
+        <Image src="/logo-mark.png" alt="" width={36} height={41} className="h-9 w-auto" />
         Reciply
       </Link>
 
