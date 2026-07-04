@@ -100,6 +100,13 @@ export function getTier(id: TierId): Tier {
   return tier;
 }
 
+/** Position in the Discovery < Essentials < Pro < Ultimate ladder — used to
+ * tell an upgrade (take effect now, prorated) from a downgrade (deferred to
+ * the end of the current billing period). */
+export function tierRank(id: TierId): number {
+  return TIERS.findIndex((t) => t.id === id);
+}
+
 /** Whichever tier a profile's limits/features are actually determined by
  * right now — a lapsed or past-due subscription doesn't keep paid perks. */
 export function effectiveTierId(

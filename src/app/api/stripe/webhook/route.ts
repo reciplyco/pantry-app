@@ -27,14 +27,13 @@ async function syncSubscription(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price.id;
   const tier = priceId ? tierForPriceId(priceId) : null;
 
+  // Split into two updates so a missing subscription_tier column (e.g.
+  // migration 0006 not applied yet) can't take down the status/period-end
+  // sync that's been working in production all along.
   const { error } = await supabase
     .from("profiles")
     .update({
       subscription_status: newStatus,
-      // Only overwrite the tier when we can confidently resolve it from
-      // the subscription's price — otherwise leave whatever tier the
-      // profile already has rather than silently resetting it to null.
-      ...(tier ? { subscription_tier: tier } : {}),
       subscription_current_period_end: subscriptionPeriodEnd(subscription),
     })
     .eq("stripe_customer_id", customerId);
@@ -42,6 +41,22 @@ async function syncSubscription(subscription: Stripe.Subscription) {
   if (error) {
     console.error("Failed to sync subscription to profile", error);
     return;
+  }
+
+  // Only overwrite the tier when we can confidently resolve it from the
+  // subscription's price — otherwise leave whatever tier the profile
+  // already has rather than silently resetting it to null.
+  if (tier) {
+    const { error: tierError } = await supabase
+      .from("profiles")
+      .update({ subscription_tier: tier })
+      .eq("stripe_customer_id", customerId);
+    if (tierError) {
+      console.error(
+        "Failed to sync subscription_tier (has migration 0006 been applied?)",
+        tierError
+      );
+    }
   }
 
   // Fire the activation event only on the transition into "active", not on

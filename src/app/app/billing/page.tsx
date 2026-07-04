@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import { effectiveTierId } from "@/lib/pricing";
+import { getActiveSubscription, getPendingScheduledChange } from "@/lib/stripe";
 import AppHeader from "@/components/AppHeader";
 import BillingPanel from "@/components/dashboard/BillingPanel";
 
@@ -24,6 +25,13 @@ export default async function BillingPage() {
     profile?.subscription_tier
   );
 
+  const pendingChange =
+    subscriptionStatus === "active" && profile?.stripe_customer_id
+      ? await getActiveSubscription(profile.stripe_customer_id).then((sub) =>
+          sub ? getPendingScheduledChange(sub) : null
+        )
+      : null;
+
   return (
     <>
       <AppHeader tierId={currentTierId} />
@@ -38,6 +46,7 @@ export default async function BillingPage() {
           subscriptionCurrentPeriodEnd={
             profile?.subscription_current_period_end ?? null
           }
+          pendingChange={pendingChange}
         />
       </main>
     </>

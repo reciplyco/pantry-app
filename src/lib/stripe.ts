@@ -76,3 +76,47 @@ export function tierForPriceId(priceId: string): PaidTierId | null {
   }
   return null;
 }
+
+/** The customer's current paid subscription, if any — status can be
+ * "active" or "trialing" (both treated as active elsewhere in the app). */
+export async function getActiveSubscription(
+  customerId: string
+): Promise<Stripe.Subscription | null> {
+  const subs = await stripe.subscriptions.list({ customer: customerId, limit: 10 });
+  return (
+    subs.data.find((s) => s.status === "active" || s.status === "trialing") ??
+    null
+  );
+}
+
+export type PendingScheduledChange = {
+  tier: PaidTierId;
+  effectiveDate: string;
+};
+
+/** If this subscription has a downgrade scheduled (see the change-plan
+ * route), returns the tier it's switching to and when — so the billing UI
+ * can say so clearly instead of the change happening silently later. */
+export async function getPendingScheduledChange(
+  subscription: Stripe.Subscription
+): Promise<PendingScheduledChange | null> {
+  if (!subscription.schedule) return null;
+  const scheduleId =
+    typeof subscription.schedule === "string"
+      ? subscription.schedule
+      : subscription.schedule.id;
+  const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId);
+  const now = Math.floor(Date.now() / 1000);
+  const upcomingPhase = schedule.phases.find((p) => p.start_date > now);
+  if (!upcomingPhase) return null;
+
+  const item = upcomingPhase.items[0];
+  const priceId = item ? (typeof item.price === "string" ? item.price : item.price.id) : null;
+  const tier = priceId ? tierForPriceId(priceId) : null;
+  if (!tier) return null;
+
+  return {
+    tier,
+    effectiveDate: new Date(upcomingPhase.start_date * 1000).toISOString(),
+  };
+}

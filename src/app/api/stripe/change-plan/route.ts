@@ -1,0 +1,170 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import {
+  stripe,
+  priceIdForTier,
+  tierForPriceId,
+  getActiveSubscription,
+} from "@/lib/stripe";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { PAID_TIER_IDS, tierRank, type PaidTierId } from "@/lib/pricing";
+import type { Profile } from "@/lib/types";
+
+const requestSchema = z.object({
+  tier: z.enum(PAID_TIER_IDS as [string, ...string[]]),
+  period: z.enum(["monthly", "yearly"]).default("monthly"),
+});
+
+export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await checkRateLimit(`stripe-change-plan:${user.id}`, 10, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429 }
+    );
+  }
+
+  const json = await request.json().catch(() => ({}));
+  const parsed = requestSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
+  }
+  const { tier: targetTierId, period } = parsed.data as {
+    tier: PaidTierId;
+    period: "monthly" | "yearly";
+  };
+
+  const newPriceId = priceIdForTier(targetTierId, period);
+  if (!newPriceId) {
+    return NextResponse.json(
+      { error: "That plan isn't available yet." },
+      { status: 400 }
+    );
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (!profile?.stripe_customer_id || profile.subscription_status !== "active") {
+    return NextResponse.json(
+      {
+        error:
+          "You don't have an active subscription to change — choose a plan to get started instead.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const subscription = await getActiveSubscription(profile.stripe_customer_id);
+  if (!subscription) {
+    return NextResponse.json(
+      { error: "Couldn't find your active subscription." },
+      { status: 400 }
+    );
+  }
+
+  const currentItem = subscription.items.data[0];
+  if (!currentItem) {
+    return NextResponse.json(
+      { error: "Couldn't find your current plan details." },
+      { status: 500 }
+    );
+  }
+  if (currentItem.price.id === newPriceId) {
+    return NextResponse.json(
+      { error: "You're already on this plan." },
+      { status: 400 }
+    );
+  }
+
+  // Release any previously-scheduled change first so every request starts
+  // from a clean, unscheduled subscription — otherwise a customer who
+  // changes their mind after scheduling a downgrade could end up with two
+  // conflicting schedules.
+  if (subscription.schedule) {
+    const scheduleId =
+      typeof subscription.schedule === "string"
+        ? subscription.schedule
+        : subscription.schedule.id;
+    await stripe.subscriptionSchedules.release(scheduleId).catch(() => {});
+  }
+
+  const currentTierId = tierForPriceId(currentItem.price.id);
+  const isUpgrade =
+    !currentTierId || tierRank(targetTierId) > tierRank(currentTierId);
+
+  if (isUpgrade) {
+    // Upgrades take effect immediately: credit whatever's left of the
+    // current period on the old price, charge the prorated difference for
+    // the new one, and invoice for it right now rather than waiting for
+    // the next renewal.
+    const updated = await stripe.subscriptions.update(subscription.id, {
+      items: [{ id: currentItem.id, price: newPriceId }],
+      proration_behavior: "always_invoice",
+      expand: ["latest_invoice"],
+    });
+
+    const invoice = updated.latest_invoice;
+    const amountCharged =
+      invoice && typeof invoice !== "string" ? invoice.amount_paid / 100 : null;
+
+    return NextResponse.json({
+      kind: "upgraded",
+      tier: targetTierId,
+      amountCharged,
+    });
+  }
+
+  // Downgrades are deferred to the end of the current billing period, so
+  // the customer keeps their current tier's features until then instead of
+  // losing them the moment they confirm.
+  const periodEnd = currentItem.current_period_end;
+  if (!periodEnd) {
+    return NextResponse.json(
+      { error: "Couldn't determine your current billing period." },
+      { status: 500 }
+    );
+  }
+
+  const schedule = await stripe.subscriptionSchedules.create({
+    from_subscription: subscription.id,
+  });
+  const currentPhase = schedule.phases[0];
+
+  await stripe.subscriptionSchedules.update(schedule.id, {
+    phases: [
+      {
+        items: currentPhase.items.map((item) => ({
+          price: typeof item.price === "string" ? item.price : item.price.id,
+          quantity: item.quantity ?? 1,
+        })),
+        start_date: currentPhase.start_date,
+        end_date: periodEnd,
+      },
+      {
+        items: [{ price: newPriceId, quantity: 1 }],
+        start_date: periodEnd,
+      },
+    ],
+    proration_behavior: "none",
+  });
+
+  return NextResponse.json({
+    kind: "downgraded",
+    tier: targetTierId,
+    effectiveDate: new Date(periodEnd * 1000).toISOString(),
+  });
+}
