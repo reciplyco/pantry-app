@@ -1,4 +1,7 @@
+import type { TierId } from "./pricing";
+
 export type SubscriptionStatus = "free" | "active" | "past_due" | "canceled";
+export type SubscriptionTier = TierId;
 
 // Generated recipe steps sometimes come back with a leading "1. " already
 // baked into the text; strip it so it doesn't double up with the <ol>'s
@@ -12,6 +15,7 @@ export type Profile = {
   email: string | null;
   stripe_customer_id: string | null;
   subscription_status: SubscriptionStatus;
+  subscription_tier: SubscriptionTier;
   subscription_current_period_end: string | null;
   created_at: string;
   dietary_preferences: string[];
@@ -102,8 +106,6 @@ export type MealPlanEntryWithRecipe = MealPlanEntry & {
     "id" | "title" | "time_minutes" | "servings" | "need_ingredients"
   > | null;
 };
-
-export const FREE_TIER_WEEKLY_LIMIT = 3;
 
 export const SEARCH_TIME_OPTIONS = [15, 30, 60] as const;
 

@@ -11,7 +11,7 @@ import type {
   PantryItem,
   Recipe,
   ShoppingListItem,
-  SubscriptionStatus,
+  SubscriptionTier,
 } from "@/lib/types";
 import { DAY_LABELS } from "@/lib/types";
 import PantryTab from "./PantryTab";
@@ -33,9 +33,9 @@ type Props = {
   initialShoppingList: ShoppingListItem[];
   initialMealPlan: MealPlanEntryWithRecipe[];
   initialWeekStartDate: string;
-  subscriptionStatus: SubscriptionStatus;
-  generationsUsedThisWeek: number;
-  freeTierWeeklyLimit: number;
+  tierId: SubscriptionTier;
+  generationsUsedThisMonth: number;
+  generationsPerMonth: number;
   initialDietaryPreferences: string[];
   initialDietaryNotes: string;
 };
@@ -48,9 +48,9 @@ export default function Dashboard({
   initialShoppingList,
   initialMealPlan,
   initialWeekStartDate,
-  subscriptionStatus,
-  generationsUsedThisWeek,
-  freeTierWeeklyLimit,
+  tierId,
+  generationsUsedThisMonth,
+  generationsPerMonth,
   initialDietaryPreferences,
   initialDietaryNotes,
 }: Props) {
@@ -65,16 +65,16 @@ export default function Dashboard({
   const [shoppingList, setShoppingList] = useState(initialShoppingList);
   const [mealPlan, setMealPlan] = useState(initialMealPlan);
   const [weekStartDate, setWeekStartDate] = useState(initialWeekStartDate);
-  const [usedThisWeek, setUsedThisWeek] = useState(generationsUsedThisWeek);
+  const [usedThisMonth, setUsedThisMonth] = useState(generationsUsedThisMonth);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>("generate");
   const [deselectedIds, setDeselectedIds] = useState<Set<string>>(new Set());
   const [customInstructions, setCustomInstructions] = useState("");
+  const [pantryOnly, setPantryOnly] = useState(false);
 
-  const isPro = subscriptionStatus === "active";
-  const remaining = Math.max(0, freeTierWeeklyLimit - usedThisWeek);
+  const remaining = Math.max(0, generationsPerMonth - usedThisMonth);
 
   function isSelected(id: string) {
     return !deselectedIds.has(id);
@@ -145,6 +145,7 @@ export default function Dashboard({
         body: JSON.stringify({
           pantryItems: selectedNames,
           customInstructions: customInstructions.trim() || undefined,
+          pantryOnly,
         }),
       });
       const body = await res.json();
@@ -153,7 +154,7 @@ export default function Dashboard({
         return;
       }
       setRecipes((prev) => [...(body.recipes as Recipe[]), ...prev]);
-      setUsedThisWeek((prev) => prev + 1);
+      setUsedThisMonth((prev) => prev + 1);
       track(AnalyticsEvent.RecipeGenerated, {
         count: (body.recipes as Recipe[]).length,
       });
@@ -399,7 +400,7 @@ export default function Dashboard({
   return (
     <>
       <AppHeader
-        isPro={isPro}
+        tierId={tierId}
         tabs={
           <AppTabs
             activeTab={activeTab}
@@ -444,12 +445,14 @@ export default function Dashboard({
             totalCount={pantryItems.length}
             customInstructions={customInstructions}
             onCustomInstructionsChange={setCustomInstructions}
+            pantryOnly={pantryOnly}
+            onPantryOnlyChange={setPantryOnly}
             onGenerate={handleGenerate}
             generating={generating}
             generateError={generateError}
-            isPro={isPro}
+            tierId={tierId}
             remaining={remaining}
-            freeTierWeeklyLimit={freeTierWeeklyLimit}
+            generationsPerMonth={generationsPerMonth}
             initialDietaryPreferences={initialDietaryPreferences}
             initialDietaryNotes={initialDietaryNotes}
           />

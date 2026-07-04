@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, priceIdForTier } from "@/lib/stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { PAID_TIER_IDS } from "@/lib/pricing";
 import type { Profile } from "@/lib/types";
 
 const requestSchema = z.object({
-  plan: z.enum(["monthly", "yearly"]).default("monthly"),
+  tier: z.enum(PAID_TIER_IDS as [string, ...string[]]),
+  period: z.enum(["monthly", "yearly"]).default("monthly"),
 });
 
 export async function POST(request: Request) {
@@ -29,11 +31,21 @@ export async function POST(request: Request) {
 
   const json = await request.json().catch(() => ({}));
   const parsed = requestSchema.safeParse(json);
-  const plan = parsed.success ? parsed.data.plan : "monthly";
-  const priceId =
-    plan === "yearly"
-      ? process.env.STRIPE_PRICE_YEARLY!
-      : process.env.STRIPE_PRICE_MONTHLY!;
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
+  }
+  const { tier, period } = parsed.data as {
+    tier: (typeof PAID_TIER_IDS)[number];
+    period: "monthly" | "yearly";
+  };
+
+  const priceId = priceIdForTier(tier, period);
+  if (!priceId) {
+    return NextResponse.json(
+      { error: "That plan isn't available yet." },
+      { status: 400 }
+    );
+  }
 
   const { data: profile } = await supabase
     .from("profiles")

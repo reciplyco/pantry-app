@@ -1,12 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { currentWeekStartDateKey, sevenDaysAgoISOString } from "@/lib/dates";
-import {
-  FREE_TIER_WEEKLY_LIMIT,
-  type MealPlanEntryWithRecipe,
-  type PantryItem,
-  type Profile,
-  type Recipe,
-  type ShoppingListItem,
+import { currentWeekStartDateKey, thirtyDaysAgoISOString } from "@/lib/dates";
+import { effectiveTierId, getTier } from "@/lib/pricing";
+import type {
+  MealPlanEntryWithRecipe,
+  PantryItem,
+  Profile,
+  Recipe,
+  ShoppingListItem,
 } from "@/lib/types";
 import Dashboard from "@/components/dashboard/Dashboard";
 
@@ -20,7 +20,6 @@ export default async function AppPage() {
   if (!user) return null;
 
   const weekStartDate = currentWeekStartDateKey();
-  const sevenDaysAgo = sevenDaysAgoISOString();
 
   const [
     { data: profile },
@@ -28,7 +27,7 @@ export default async function AppPage() {
     { data: recipes },
     { data: shoppingList },
     { data: mealPlan },
-    { count: generationsUsedThisWeek },
+    { count: generationsUsedThisMonth },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single<Profile>(),
     supabase
@@ -56,8 +55,12 @@ export default async function AppPage() {
       .from("generation_log")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", sevenDaysAgo),
+      .gte("created_at", thirtyDaysAgoISOString()),
   ]);
+
+  const tier = getTier(
+    effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
+  );
 
   return (
     <Dashboard
@@ -68,9 +71,9 @@ export default async function AppPage() {
       initialShoppingList={shoppingList ?? []}
       initialMealPlan={mealPlan ?? []}
       initialWeekStartDate={weekStartDate}
-      subscriptionStatus={profile?.subscription_status ?? "free"}
-      generationsUsedThisWeek={generationsUsedThisWeek ?? 0}
-      freeTierWeeklyLimit={FREE_TIER_WEEKLY_LIMIT}
+      tierId={tier.id}
+      generationsUsedThisMonth={generationsUsedThisMonth ?? 0}
+      generationsPerMonth={tier.generationsPerMonth}
       initialDietaryPreferences={profile?.dietary_preferences ?? []}
       initialDietaryNotes={profile?.dietary_notes ?? ""}
     />

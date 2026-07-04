@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import type { SubscriptionStatus } from "./types";
+import type { BillingPeriod, PaidTierId } from "./pricing";
 
 // Lazily instantiated: Next.js evaluates route handler modules while
 // collecting page data at build time, before env vars from a fresh Vercel
@@ -40,4 +41,38 @@ export function subscriptionPeriodEnd(
 ): string | null {
   const seconds = subscription.items.data[0]?.current_period_end;
   return seconds ? new Date(seconds * 1000).toISOString() : null;
+}
+
+// Env-var-backed price IDs for each paid tier — see .env.local. Discovery
+// has no Stripe price since it's free.
+const TIER_PRICE_ENV: Record<PaidTierId, Record<BillingPeriod, string | undefined>> = {
+  essentials: {
+    monthly: process.env.STRIPE_PRICE_ESSENTIALS_MONTHLY,
+    yearly: process.env.STRIPE_PRICE_ESSENTIALS_YEARLY,
+  },
+  pro: {
+    monthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
+    yearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+  },
+  ultimate: {
+    monthly: process.env.STRIPE_PRICE_ULTIMATE_MONTHLY,
+    yearly: process.env.STRIPE_PRICE_ULTIMATE_YEARLY,
+  },
+};
+
+export function priceIdForTier(
+  tier: PaidTierId,
+  period: BillingPeriod
+): string | null {
+  return TIER_PRICE_ENV[tier][period] ?? null;
+}
+
+export function tierForPriceId(priceId: string): PaidTierId | null {
+  for (const tier of Object.keys(TIER_PRICE_ENV) as PaidTierId[]) {
+    const periods = TIER_PRICE_ENV[tier];
+    if (periods.monthly === priceId || periods.yearly === priceId) {
+      return tier;
+    }
+  }
+  return null;
 }

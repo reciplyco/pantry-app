@@ -3,7 +3,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { generateRecipes } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { FREE_TIER_WEEKLY_LIMIT, type Profile } from "@/lib/types";
+import { thirtyDaysAgoISOString } from "@/lib/dates";
+import { effectiveTierId, getTier } from "@/lib/pricing";
+import type { Profile } from "@/lib/types";
 
 const requestSchema = z.object({
   pantryItems: z
@@ -11,6 +13,7 @@ const requestSchema = z.object({
     .min(1, "Add at least one pantry item first.")
     .max(40),
   customInstructions: z.string().trim().max(100).optional(),
+  pantryOnly: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -41,41 +44,43 @@ export async function POST(request: Request) {
     );
   }
 
-  const { pantryItems, customInstructions } = parsed.data;
+  const { pantryItems, customInstructions, pantryOnly } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_status, dietary_preferences, dietary_notes")
+    .select("subscription_status, subscription_tier, dietary_preferences, dietary_notes")
     .eq("id", user.id)
     .single<
       Pick<
         Profile,
-        "subscription_status" | "dietary_preferences" | "dietary_notes"
+        | "subscription_status"
+        | "subscription_tier"
+        | "dietary_preferences"
+        | "dietary_notes"
       >
     >();
 
-  const isPro = profile?.subscription_status === "active";
+  const tier = getTier(
+    effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
+  );
 
-  if (!isPro) {
-    const sevenDaysAgo = new Date(
-      Date.now() - 7 * 24 * 60 * 60 * 1000
-    ).toISOString();
+  const { count } = await supabase
+    .from("generation_log")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", thirtyDaysAgoISOString());
 
-    const { count } = await supabase
-      .from("generation_log")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", sevenDaysAgo);
-
-    if ((count ?? 0) >= FREE_TIER_WEEKLY_LIMIT) {
-      return NextResponse.json(
-        {
-          error: "free_tier_limit_reached",
-          message: `You've used all ${FREE_TIER_WEEKLY_LIMIT} free recipe generations this week. Upgrade to Pro for unlimited recipes.`,
-        },
-        { status: 402 }
-      );
-    }
+  if ((count ?? 0) >= tier.generationsPerMonth) {
+    return NextResponse.json(
+      {
+        error: "generation_limit_reached",
+        message:
+          tier.id === "ultimate"
+            ? `You've used all ${tier.generationsPerMonth} recipe generations this month.`
+            : `You've used all ${tier.generationsPerMonth} recipe generations this month. Upgrade for more.`,
+      },
+      { status: 402 }
+    );
   }
 
   let generated;
@@ -86,7 +91,8 @@ export async function POST(request: Request) {
         preferences: profile?.dietary_preferences ?? [],
         notes: profile?.dietary_notes ?? null,
       },
-      customInstructions
+      customInstructions,
+      pantryOnly
     );
   } catch (err) {
     console.error("Recipe generation failed", err);

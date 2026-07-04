@@ -103,7 +103,8 @@ export type DietaryConstraints = {
 export async function generateRecipes(
   pantryItems: string[],
   dietary?: DietaryConstraints,
-  customInstructions?: string
+  customInstructions?: string,
+  pantryOnly?: boolean
 ): Promise<GeneratedRecipe[]> {
   const constraints: string[] = [];
   if (dietary?.preferences.length) {
@@ -117,6 +118,10 @@ export async function generateRecipes(
     ? `\n\nStrict dietary requirements — every recipe MUST comply, with no exceptions: ${constraints.join("; ")}. If an ingredient the user has on hand conflicts with these requirements, leave it out rather than violating the requirement.`
     : "";
 
+  const pantryOnlyInstruction = pantryOnly
+    ? "\n\nThe user wants to cook using ONLY the ingredients they listed — do not add any ingredient they don't already have, including basic staples like oil, salt, pepper, or spices unless those are explicitly in their list. Every recipe's need_ingredients array must be empty."
+    : "";
+
   const requestLine = customInstructions?.trim()
     ? `\n\nAdditional request from the user: ${customInstructions.trim()}`
     : "";
@@ -126,7 +131,8 @@ export async function generateRecipes(
     max_tokens: 4096,
     system:
       "You are a practical home-cooking assistant. Given a list of ingredients someone already has, suggest recipes that make the most of those ingredients. Prefer recipes that need few, if any, additional ingredients, and note clearly what's missing. Keep steps concise and realistic for a home cook. Give honest, reasonable nutrition estimates per serving." +
-      dietaryInstruction,
+      dietaryInstruction +
+      pantryOnlyInstruction,
     messages: [
       {
         role: "user",

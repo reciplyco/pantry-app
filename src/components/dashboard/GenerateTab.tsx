@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { getIngredientIcon } from "@/lib/ingredient-icons";
+import { getTier } from "@/lib/pricing";
+import type { SubscriptionTier } from "@/lib/types";
 import DietaryPreferencesPanel from "./DietaryPreferencesPanel";
 
 const MAX_INSTRUCTIONS_LENGTH = 100;
@@ -11,12 +13,14 @@ type Props = {
   totalCount: number;
   customInstructions: string;
   onCustomInstructionsChange: (value: string) => void;
+  pantryOnly: boolean;
+  onPantryOnlyChange: (value: boolean) => void;
   onGenerate: () => Promise<void>;
   generating: boolean;
   generateError: string | null;
-  isPro: boolean;
+  tierId: SubscriptionTier;
   remaining: number;
-  freeTierWeeklyLimit: number;
+  generationsPerMonth: number;
   initialDietaryPreferences: string[];
   initialDietaryNotes: string;
 };
@@ -26,16 +30,19 @@ export default function GenerateTab({
   totalCount,
   customInstructions,
   onCustomInstructionsChange,
+  pantryOnly,
+  onPantryOnlyChange,
   onGenerate,
   generating,
   generateError,
-  isPro,
+  tierId,
   remaining,
-  freeTierWeeklyLimit,
+  generationsPerMonth,
   initialDietaryPreferences,
   initialDietaryNotes,
 }: Props) {
-  const isCapped = !isPro && remaining <= 0;
+  const isCapped = remaining <= 0;
+  const isTopTier = getTier(tierId).id === "ultimate";
   const hasSelection = selectedNames.length > 0;
 
   return (
@@ -71,14 +78,9 @@ export default function GenerateTab({
               : `Using ${selectedNames.length} of ${totalCount} pantry item${totalCount === 1 ? "" : "s"}`}
           </p>
           <div className="shrink-0 font-mono text-xs text-ink-muted">
-            {isPro ? (
-              <span className="text-sage">Unlimited generations</span>
-            ) : (
-              <span className={isCapped ? "text-accent" : undefined}>
-                {remaining} / {freeTierWeeklyLimit} free generations left this
-                week
-              </span>
-            )}
+            <span className={isCapped ? "text-accent" : undefined}>
+              {remaining} / {generationsPerMonth} generations left this month
+            </span>
           </div>
         </div>
 
@@ -129,6 +131,22 @@ export default function GenerateTab({
           </p>
         </div>
 
+        <label className="mt-4 flex items-start gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={pantryOnly}
+            onChange={(e) => onPantryOnlyChange(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+          />
+          <span>
+            Only use what&rsquo;s in my pantry
+            <span className="block text-xs text-ink-muted">
+              No extra ingredients, not even basic staples — recipes will be
+              buildable from your selected items alone.
+            </span>
+          </span>
+        </label>
+
         <div className="mt-6">
           <button
             type="button"
@@ -150,12 +168,12 @@ export default function GenerateTab({
             )}
           </button>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-center">
-            {isCapped && (
+            {isCapped && !isTopTier && (
               <Link
                 href="/app/billing"
                 className="text-sm font-medium text-accent underline underline-offset-2"
               >
-                Upgrade to Pro for unlimited recipes →
+                Upgrade for more recipe generations →
               </Link>
             )}
             {generateError && !isCapped && (

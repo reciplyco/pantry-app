@@ -1,12 +1,17 @@
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
+import { getTier } from "@/lib/pricing";
+import type { SubscriptionTier } from "@/lib/types";
 
 type Props = {
-  isPro: boolean;
+  tierId: SubscriptionTier;
   tabs?: React.ReactNode;
 };
 
-export default function AppHeader({ isPro, tabs }: Props) {
+export default function AppHeader({ tierId, tabs }: Props) {
+  const tier = getTier(tierId);
+  const isFree = tierId === "discovery";
+
   const logo = (
     <Link
       href="/app"
@@ -20,12 +25,12 @@ export default function AppHeader({ isPro, tabs }: Props) {
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4">
       <span
         className={`whitespace-nowrap rounded-full px-3 py-1 font-mono text-xs uppercase tracking-widest ${
-          isPro
-            ? "bg-sage text-sage-ink"
-            : "border border-accent-ink/30 text-accent-ink/80"
+          isFree
+            ? "border border-accent-ink/30 text-accent-ink/80"
+            : "bg-sage text-sage-ink"
         }`}
       >
-        {isPro ? "Pro" : "Free"}
+        {tier.name}
       </span>
       <Link
         href="/app/billing"
