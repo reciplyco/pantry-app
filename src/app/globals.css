@@ -175,3 +175,15 @@ body {
   background-size: 20px 10px;
   background-repeat: repeat-x;
 }
+
+/* Horizontally-scrollable regions (e.g. the header tab bar) rely on the
+   fade-gradient edge as the "more content" hint instead of a native
+   scrollbar, which reads as a stray debug artifact in a nav bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

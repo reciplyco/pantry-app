@@ -58,7 +58,7 @@ export default function AppTabs({
 
   return (
     <div className="relative">
-      <nav className="flex items-center gap-1 overflow-x-auto sm:gap-1.5">
+      <nav className="no-scrollbar flex items-center gap-1 overflow-x-auto sm:gap-1.5">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -88,11 +88,11 @@ export default function AppTabs({
           );
         })}
       </nav>
-      {/* Hints that the tab bar scrolls horizontally on narrow screens,
-          where all 5 tabs don't necessarily fit at once. */}
+      {/* Hints that the tab bar scrolls horizontally when the header's
+          logo + tabs + account links don't all fit on one line. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-paper to-transparent sm:hidden"
+        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-paper to-transparent"
       />
     </div>
   );
