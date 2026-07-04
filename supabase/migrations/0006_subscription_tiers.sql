@@ -7,3 +7,10 @@
 alter table public.profiles
   add column subscription_tier text not null default 'discovery'
     check (subscription_tier in ('discovery', 'essentials', 'pro', 'ultimate'));
+
+-- Anyone already actively paying under the old single-tier Pro plan
+-- keeps Pro-equivalent treatment rather than being silently dropped to
+-- Discovery's much lower generation cap the moment this column exists.
+update public.profiles
+  set subscription_tier = 'pro'
+  where subscription_status = 'active';
