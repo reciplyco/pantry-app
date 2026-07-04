@@ -72,7 +72,7 @@ export default function ShoppingList({
                   type="button"
                   onClick={() => onRemove(item.id)}
                   aria-label={`Remove ${item.name}`}
-                  className="text-ink-muted transition hover:text-accent active:scale-90"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-base text-ink-muted transition hover:bg-line/40 hover:text-accent active:scale-90"
                 >
                   ×
                 </button>
@@ -100,7 +100,7 @@ export default function ShoppingList({
           />
           <button
             type="submit"
-            className="rounded-full border border-line px-3 py-1 text-xs transition hover:border-ink active:scale-95"
+            className="rounded-full border border-line px-4 py-1.5 text-xs transition hover:border-ink active:scale-95"
           >
             Add
           </button>

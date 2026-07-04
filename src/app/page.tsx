@@ -27,7 +27,7 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <span className="font-serif text-2xl font-medium tracking-tight">
+        <span className="font-serif text-4xl font-medium tracking-tight">
           Reciply
         </span>
         <nav className="flex items-center gap-5 text-sm">

@@ -18,7 +18,7 @@ export default async function LoginPage() {
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-6 py-16">
       <Link
         href="/"
-        className="mb-8 font-serif text-2xl font-medium tracking-tight"
+        className="mb-8 font-serif text-4xl font-medium tracking-tight"
       >
         Reciply
       </Link>

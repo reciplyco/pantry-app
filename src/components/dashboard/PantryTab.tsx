@@ -67,7 +67,7 @@ export default function PantryTab({
         next generation over on the Generate tab.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-5 flex gap-2">
+      <form onSubmit={handleSubmit} className="mt-5 flex gap-3">
         <input
           type="text"
           value={input}
@@ -76,12 +76,12 @@ export default function PantryTab({
             setAddError(null);
           }}
           placeholder="e.g. chickpeas, spinach, garlic"
-          className="flex-1 rounded-sm border border-line bg-card px-3 py-2 outline-none focus:border-accent"
+          className="flex-1 rounded-sm border border-line bg-card px-4 py-3 text-base outline-none focus:border-accent"
         />
         <button
           type="submit"
           disabled={validating}
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
+          className="rounded-full border border-line px-6 py-3 text-base font-medium transition hover:border-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
         >
           {validating ? "Checking…" : "Add"}
         </button>
@@ -90,7 +90,7 @@ export default function PantryTab({
 
       {pantryItems.length > 0 ? (
         <>
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-6 flex items-center justify-between">
             <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
               {pantryItems.filter((i) => isSelected(i.id)).length} of{" "}
               {pantryItems.length} selected
@@ -98,42 +98,51 @@ export default function PantryTab({
             <button
               type="button"
               onClick={onToggleSelectAll}
-              className="text-sm font-medium text-accent underline underline-offset-2"
+              className="rounded-full border border-line px-4 py-1.5 text-sm font-medium transition hover:border-ink active:scale-95"
             >
               {allSelected ? "Deselect all" : "Select all"}
             </button>
           </div>
 
-          <ul className="mt-2 space-y-1.5">
-            {pantryItems.map((item) => (
-              <li
-                key={item.id}
-                className="anim-fade-in-up flex items-center gap-3 rounded-sm border border-line bg-paper-alt px-3 py-2"
-              >
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isSelected(item.id)}
-                    onChange={() => onToggleSelected(item.id)}
-                    className="accent-accent"
-                  />
-                  <span className="text-lg leading-none" aria-hidden="true">
-                    {getIngredientIcon(item.name)}
-                  </span>
-                  <span className="truncate text-sm text-ink">
-                    {item.name}
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  aria-label={`Remove ${item.name}`}
-                  className="shrink-0 text-ink-muted transition hover:text-accent active:scale-90"
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {pantryItems.map((item) => {
+              const selected = isSelected(item.id);
+              return (
+                <li
+                  key={item.id}
+                  className={`anim-fade-in-up flex items-center gap-2 rounded-sm border px-3 py-3 transition-all duration-200 ${
+                    selected
+                      ? "border-line bg-paper-alt opacity-100"
+                      : "border-line/50 bg-transparent opacity-45"
+                  }`}
                 >
-                  ×
-                </button>
-              </li>
-            ))}
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => onToggleSelected(item.id)}
+                      className="h-4 w-4 shrink-0 accent-accent"
+                    />
+                    <span className="text-xl leading-none" aria-hidden="true">
+                      {getIngredientIcon(item.name)}
+                    </span>
+                    <span
+                      className={`truncate text-sm ${selected ? "text-ink" : "text-ink-muted"}`}
+                    >
+                      {item.name}
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item.id)}
+                    aria-label={`Remove ${item.name}`}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-ink-muted transition hover:bg-line/40 hover:text-accent active:scale-90"
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </>
       ) : (

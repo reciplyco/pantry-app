@@ -35,12 +35,12 @@ export default function MealPlanner({
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-2xl font-medium">Meal planner</h2>
-        <div className="flex items-center gap-3 font-mono text-xs text-ink-muted">
+        <div className="flex items-center gap-3 font-mono text-sm text-ink-muted">
           <button
             type="button"
             onClick={onPrevWeek}
             aria-label="Previous week"
-            className="rounded-full border border-line px-2 py-1 transition hover:border-ink active:scale-90"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-lg transition hover:border-ink hover:bg-paper-alt active:scale-90"
           >
             ‹
           </button>
@@ -51,7 +51,7 @@ export default function MealPlanner({
             type="button"
             onClick={onNextWeek}
             aria-label="Next week"
-            className="rounded-full border border-line px-2 py-1 transition hover:border-ink active:scale-90"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-lg transition hover:border-ink hover:bg-paper-alt active:scale-90"
           >
             ›
           </button>
@@ -61,7 +61,7 @@ export default function MealPlanner({
             type="button"
             disabled={shopping}
             onClick={handleShopForWeek}
-            className="rounded-full bg-sage px-4 py-1.5 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
+            className="rounded-full bg-sage px-5 py-2.5 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
           >
             {shopping ? "Adding…" : "Shop for the week"}
           </button>
@@ -96,7 +96,7 @@ export default function MealPlanner({
                         type="button"
                         onClick={() => onRemoveEntry(entry.id)}
                         aria-label="Remove from plan"
-                        className="shrink-0 text-ink-muted transition hover:text-accent active:scale-90"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-sm text-ink-muted transition hover:bg-line/40 hover:text-accent active:scale-90"
                       >
                         ×
                       </button>

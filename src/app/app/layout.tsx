@@ -28,11 +28,11 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-b border-line px-6 py-4">
+      <header className="border-b border-line px-6 py-5">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
           <Link
             href="/app"
-            className="font-serif text-xl font-medium tracking-tight"
+            className="font-serif text-3xl font-medium tracking-tight"
           >
             Reciply
           </Link>

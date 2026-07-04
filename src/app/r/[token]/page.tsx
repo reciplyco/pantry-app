@@ -32,7 +32,7 @@ export default async function SharedRecipePage({
     <div className="flex min-h-full flex-col items-center px-6 py-16">
       <Link
         href="/"
-        className="mb-8 font-serif text-2xl font-medium tracking-tight"
+        className="mb-8 font-serif text-4xl font-medium tracking-tight"
       >
         Reciply
       </Link>

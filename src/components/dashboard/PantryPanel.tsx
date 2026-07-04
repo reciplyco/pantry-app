@@ -71,28 +71,38 @@ export default function PantryPanel({
 
   return (
     <section className="paper-card overflow-hidden rounded-sm">
-      <div className="flex border-b border-line">
+      <div className="flex">
         <button
           type="button"
           onClick={() => setActiveTab("pantry")}
-          className={`flex-1 px-6 py-4 text-left font-serif text-xl font-medium transition ${
+          className={`flex-1 border-b-[3px] px-6 py-5 text-left font-serif text-xl font-medium transition ${
             activeTab === "pantry"
-              ? "bg-card text-ink"
-              : "bg-paper-alt text-ink-muted hover:text-ink"
+              ? "border-accent bg-card text-ink"
+              : "border-line bg-paper-alt text-ink-muted hover:text-ink"
           }`}
         >
           Pantry
+          {pantryItems.length > 0 && (
+            <span className="ml-2 font-mono text-sm text-ink-muted">
+              {pantryItems.length}
+            </span>
+          )}
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("generate")}
-          className={`flex-1 px-6 py-4 text-left font-serif text-xl font-medium transition ${
+          className={`flex-1 border-b-[3px] px-6 py-5 text-left font-serif text-xl font-medium transition ${
             activeTab === "generate"
-              ? "bg-card text-ink"
-              : "bg-paper-alt text-ink-muted hover:text-ink"
+              ? "border-accent bg-card text-ink"
+              : "border-line bg-paper-alt text-ink-muted hover:text-ink"
           }`}
         >
           Generate
+          {selectedNames.length > 0 && (
+            <span className="ml-2 font-mono text-sm text-ink-muted">
+              {selectedNames.length} selected
+            </span>
+          )}
         </button>
       </div>
 
