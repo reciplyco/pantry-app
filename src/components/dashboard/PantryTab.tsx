@@ -24,10 +24,38 @@ export default function PantryTab({
   onToggleSelectAll,
 }: Props) {
   const [input, setInput] = useState("");
+  const [validating, setValidating] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const value = input;
+    const value = input.trim();
+    if (!value) return;
+
+    setAddError(null);
+    setValidating(true);
+    try {
+      const res = await fetch("/api/pantry/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: value }),
+      });
+      const body = await res.json();
+      if (res.ok && body.valid === false) {
+        setAddError(
+          body.reason
+            ? `"${value}" — ${body.reason}`
+            : `"${value}" doesn't look like a real ingredient.`
+        );
+        return;
+      }
+    } catch {
+      // Fail open — a network hiccup on the validation check shouldn't
+      // block adding a pantry item.
+    } finally {
+      setValidating(false);
+    }
+
     setInput("");
     await onAdd(value);
   }
@@ -43,17 +71,22 @@ export default function PantryTab({
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setAddError(null);
+          }}
           placeholder="e.g. chickpeas, spinach, garlic"
           className="flex-1 rounded-sm border border-line bg-card px-3 py-2 outline-none focus:border-accent"
         />
         <button
           type="submit"
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink active:scale-95"
+          disabled={validating}
+          className="rounded-full border border-line px-4 py-2 text-sm font-medium transition hover:border-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
         >
-          Add
+          {validating ? "Checking…" : "Add"}
         </button>
       </form>
+      {addError && <p className="mt-2 text-sm text-accent">{addError}</p>}
 
       {pantryItems.length > 0 ? (
         <>

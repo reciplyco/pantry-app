@@ -148,3 +148,61 @@ export async function generateRecipes(
   const parsed = toolUse.input as { recipes: GeneratedRecipe[] };
   return parsed.recipes;
 }
+
+const VALIDATE_INGREDIENT_TOOL: Anthropic.Tool = {
+  name: "validate_ingredient",
+  description:
+    "Determine whether a submitted pantry entry is a real, edible food or cooking ingredient, as opposed to gibberish, spam, or unrelated text.",
+  input_schema: {
+    type: "object",
+    properties: {
+      is_valid: {
+        type: "boolean",
+        description:
+          "True if this is a plausible food/cooking ingredient, even if oddly worded, misspelled, or informally described.",
+      },
+      reason: {
+        type: "string",
+        description:
+          "If not valid, a short reason under 8 words (e.g. 'not a food item', 'looks like random text').",
+      },
+    },
+    required: ["is_valid"],
+  },
+};
+
+export type IngredientValidation = {
+  valid: boolean;
+  reason?: string;
+};
+
+export async function validatePantryItem(
+  name: string
+): Promise<IngredientValidation> {
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 200,
+    system:
+      "You check whether short text submitted to a home cook's pantry list is a real, edible food or cooking ingredient — including staples, produce, proteins, spices, sauces, and informal descriptions like 'half an onion' or 'leftover rice'. Be lenient with typos, plurals, brand names, and regional or non-English names. Reject only clear gibberish, random characters, offensive content, or text unrelated to food.",
+    messages: [
+      {
+        role: "user",
+        content: `Is "${name}" a real food or cooking ingredient?`,
+      },
+    ],
+    tools: [VALIDATE_INGREDIENT_TOOL],
+    tool_choice: { type: "tool", name: "validate_ingredient" },
+  });
+
+  const toolUse = message.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+  );
+
+  if (!toolUse) {
+    // Fail open: an unexpected response shape shouldn't block a core action.
+    return { valid: true };
+  }
+
+  const parsed = toolUse.input as { is_valid: boolean; reason?: string };
+  return { valid: parsed.is_valid, reason: parsed.reason };
+}

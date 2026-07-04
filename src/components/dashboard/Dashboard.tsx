@@ -127,6 +127,29 @@ export default function Dashboard({
     }
   }
 
+  async function deleteRecipe(recipe: Recipe) {
+    setRecipes((prev) => prev.filter((r) => r.id !== recipe.id));
+    await supabase.from("recipes").delete().eq("id", recipe.id);
+    showToast(`Deleted "${recipe.title}"`, async () => {
+      const { data, error } = await supabase
+        .from("recipes")
+        .insert({
+          title: recipe.title,
+          time_minutes: recipe.time_minutes,
+          servings: recipe.servings,
+          have_ingredients: recipe.have_ingredients,
+          need_ingredients: recipe.need_ingredients,
+          steps: recipe.steps,
+          nutrition: recipe.nutrition,
+          is_favorite: recipe.is_favorite,
+          share_token: recipe.share_token,
+        })
+        .select("*")
+        .single<Recipe>();
+      if (!error && data) setRecipes((prev) => [data, ...prev]);
+    });
+  }
+
   async function toggleShare(recipe: Recipe) {
     const newToken = recipe.share_token ? null : crypto.randomUUID();
     const { data, error } = await supabase
@@ -348,6 +371,7 @@ export default function Dashboard({
         onAddToMealPlan={addToMealPlan}
         onToggleShare={toggleShare}
         onToggleFavorite={toggleFavorite}
+        onDelete={deleteRecipe}
       />
 
       <ReminderBanner

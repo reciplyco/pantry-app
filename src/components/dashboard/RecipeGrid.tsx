@@ -10,6 +10,7 @@ type Props = {
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
   onToggleFavorite: (recipe: Recipe) => Promise<void>;
+  onDelete: (recipe: Recipe) => Promise<void>;
 };
 
 type SortBy = "newest" | "time" | "calories";
@@ -31,6 +32,7 @@ export default function RecipeGrid({
   onAddToMealPlan,
   onToggleShare,
   onToggleFavorite,
+  onDelete,
 }: Props) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
@@ -129,6 +131,7 @@ export default function RecipeGrid({
               onAddToMealPlan={onAddToMealPlan}
               onToggleShare={onToggleShare}
               onToggleFavorite={onToggleFavorite}
+              onDelete={onDelete}
             />
           ))}
         </div>

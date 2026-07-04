@@ -10,6 +10,7 @@ type Props = {
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
   onToggleFavorite: (recipe: Recipe) => Promise<void>;
+  onDelete: (recipe: Recipe) => Promise<void>;
 };
 
 export default function RecipeCard({
@@ -19,6 +20,7 @@ export default function RecipeCard({
   onAddToMealPlan,
   onToggleShare,
   onToggleFavorite,
+  onDelete,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [day, setDay] = useState<Day>("mon");
@@ -28,6 +30,12 @@ export default function RecipeCard({
   const [copied, setCopied] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [pop, setPop] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    await onDelete(recipe);
+  }
 
   async function handleToggleFavorite() {
     setPop(true);
@@ -136,25 +144,36 @@ export default function RecipeCard({
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-4">
+      <div className="mt-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-sm font-medium text-accent underline underline-offset-2 transition active:scale-95"
+          >
+            {expanded ? "Hide recipe" : "View recipe"}
+          </button>
+          <button
+            type="button"
+            disabled={sharing}
+            onClick={handleToggleShare}
+            className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink active:scale-95 disabled:opacity-50"
+          >
+            {sharing
+              ? "…"
+              : recipe.share_token
+                ? "Stop sharing"
+                : "Share"}
+          </button>
+        </div>
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="text-sm font-medium text-accent underline underline-offset-2 transition active:scale-95"
+          disabled={deleting}
+          onClick={handleDelete}
+          aria-label={`Delete "${recipe.title}"`}
+          className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-accent active:scale-95 disabled:opacity-50"
         >
-          {expanded ? "Hide recipe" : "View recipe"}
-        </button>
-        <button
-          type="button"
-          disabled={sharing}
-          onClick={handleToggleShare}
-          className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink active:scale-95 disabled:opacity-50"
-        >
-          {sharing
-            ? "…"
-            : recipe.share_token
-              ? "Stop sharing"
-              : "Share"}
+          Delete
         </button>
       </div>
 
