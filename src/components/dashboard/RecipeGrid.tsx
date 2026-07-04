@@ -113,9 +113,14 @@ export default function RecipeGrid({
       </div>
 
       {recipes.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-muted">
-          No recipes yet — add pantry items above and generate some.
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 py-10 text-center">
+          <p className="text-4xl" aria-hidden="true">
+            🍽️
+          </p>
+          <p className="text-sm text-ink-muted">
+            No recipes yet — add pantry items and generate some.
+          </p>
+        </div>
       ) : visibleRecipes.length === 0 ? (
         <p className="mt-3 text-sm text-ink-muted">
           No recipes match your search or filters.

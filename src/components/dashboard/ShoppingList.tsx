@@ -44,7 +44,12 @@ export default function ShoppingList({
         </p>
 
         {items.length === 0 ? (
-          <p className="py-6 text-center text-ink-muted">List is empty.</p>
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <p className="text-3xl" aria-hidden="true">
+              🛒
+            </p>
+            <p className="text-ink-muted">List is empty.</p>
+          </div>
         ) : (
           <ul>
             {items.map((item) => (

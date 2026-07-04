@@ -41,6 +41,16 @@ export default function GenerateTab({
   return (
     <div className="flex min-h-[65vh] flex-col justify-center">
       <div className="mb-8 text-center">
+        <p
+          className="mb-3 flex justify-center gap-4 text-2xl opacity-80 sm:text-3xl"
+          aria-hidden="true"
+        >
+          <span className="-rotate-6">🍅</span>
+          <span className="rotate-3">🌿</span>
+          <span className="-rotate-3">🥕</span>
+          <span className="rotate-6">🧄</span>
+          <span className="-rotate-3">🍋</span>
+        </p>
         <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
           Cook what you already have
         </p>

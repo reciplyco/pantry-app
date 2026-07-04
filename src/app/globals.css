@@ -12,6 +12,7 @@
   --sage: #5c6b47;
   --sage-ink: #fff8ee;
   --hero: #e4e0c7;
+  --header: #6b2417;
 }
 
 @theme inline {
@@ -26,6 +27,7 @@
   --color-sage: var(--sage);
   --color-sage-ink: var(--sage-ink);
   --color-hero: var(--hero);
+  --color-header: var(--header);
 
   --font-serif: var(--font-fraunces);
   --font-sans: var(--font-karla);

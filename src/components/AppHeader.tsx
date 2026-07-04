@@ -10,7 +10,7 @@ export default function AppHeader({ isPro, tabs }: Props) {
   const logo = (
     <Link
       href="/app"
-      className="shrink-0 font-serif text-2xl font-medium tracking-tight sm:text-3xl"
+      className="shrink-0 font-serif text-2xl font-medium tracking-tight text-accent-ink sm:text-3xl"
     >
       Reciply
     </Link>
@@ -22,20 +22,20 @@ export default function AppHeader({ isPro, tabs }: Props) {
         className={`whitespace-nowrap rounded-full px-3 py-1 font-mono text-xs uppercase tracking-widest ${
           isPro
             ? "bg-sage text-sage-ink"
-            : "border border-line text-ink-muted"
+            : "border border-accent-ink/30 text-accent-ink/80"
         }`}
       >
         {isPro ? "Pro" : "Free"}
       </span>
       <Link
         href="/app/billing"
-        className="whitespace-nowrap text-sm text-ink-muted transition hover:text-ink"
+        className="whitespace-nowrap text-sm text-accent-ink/75 transition hover:text-accent-ink"
       >
         Billing
       </Link>
       <Link
         href="/app/account"
-        className="whitespace-nowrap text-sm text-ink-muted transition hover:text-ink"
+        className="whitespace-nowrap text-sm text-accent-ink/75 transition hover:text-accent-ink"
       >
         Account
       </Link>
@@ -44,24 +44,17 @@ export default function AppHeader({ isPro, tabs }: Props) {
   );
 
   return (
-    <header className="border-b border-line">
-      <div className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-6 sm:py-5">
-        {/* Below `sm`, there isn't room for the logo, tabs, and account
-            links on one line — logo/account share the top line and the
-            tab bar gets its own full-width line beneath. */}
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 sm:hidden">
+    <header className="bg-header">
+      {/* Tabs get their own full-width row at every breakpoint — sharing
+          a row with the logo and account links left too little room for
+          six tabs, so the last one or two scrolled out of view with no
+          visible way to reach them. */}
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           {logo}
           {accountLinks}
         </div>
-        {tabs && <div className="mt-3 sm:hidden">{tabs}</div>}
-
-        {/* At `sm` and up there's enough width to keep everything on a
-            single row, with the tab bar scrolling internally if needed. */}
-        <div className="hidden items-center gap-4 sm:flex sm:gap-6">
-          {logo}
-          {tabs && <div className="min-w-0 flex-1">{tabs}</div>}
-          {accountLinks}
-        </div>
+        {tabs && <div className="mt-4">{tabs}</div>}
       </div>
     </header>
   );

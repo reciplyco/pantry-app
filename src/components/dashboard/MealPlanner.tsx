@@ -68,6 +68,13 @@ export default function MealPlanner({
         )}
       </div>
 
+      {entries.length === 0 && (
+        <p className="mt-3 text-sm text-ink-muted">
+          <span aria-hidden="true">🗓️ </span>
+          Nothing planned yet — add recipes to your week from the Recipes tab.
+        </p>
+      )}
+
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {DAYS.map((day) => {
           const dayEntries = entries.filter((e) => e.day === day);

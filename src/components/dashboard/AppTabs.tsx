@@ -70,7 +70,7 @@ export default function AppTabs({
               className={`whitespace-nowrap rounded-full px-4 py-2 font-serif text-sm font-medium transition sm:px-5 sm:py-2.5 sm:text-base ${
                 active
                   ? "bg-accent text-accent-ink"
-                  : "text-ink-muted hover:bg-paper-alt hover:text-ink"
+                  : "text-accent-ink/70 hover:bg-white/10 hover:text-accent-ink"
               }`}
             >
               <span className="sm:hidden">{tab.shortLabel}</span>
@@ -78,7 +78,7 @@ export default function AppTabs({
               {tab.count > 0 && (
                 <span
                   className={`ml-1.5 hidden font-mono text-xs sm:inline ${
-                    active ? "text-accent-ink/75" : "text-ink-muted"
+                    active ? "text-accent-ink/75" : "text-accent-ink/60"
                   }`}
                 >
                   {tab.count}
@@ -88,11 +88,11 @@ export default function AppTabs({
           );
         })}
       </nav>
-      {/* Hints that the tab bar scrolls horizontally when the header's
-          logo + tabs + account links don't all fit on one line. */}
+      {/* Hints that the tab bar scrolls horizontally on narrow viewports
+          where even the short tab labels don't all fit on one line. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-paper to-transparent"
+        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-header to-transparent"
       />
     </div>
   );

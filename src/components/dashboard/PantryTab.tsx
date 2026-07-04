@@ -146,9 +146,14 @@ export default function PantryTab({
           </ul>
         </>
       ) : (
-        <p className="mt-4 text-sm text-ink-muted">
-          Nothing in your pantry yet — add a few ingredients to get started.
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 py-10 text-center">
+          <p className="text-4xl" aria-hidden="true">
+            🧺
+          </p>
+          <p className="text-sm text-ink-muted">
+            Nothing in your pantry yet — add a few ingredients to get started.
+          </p>
+        </div>
       )}
     </div>
   );
