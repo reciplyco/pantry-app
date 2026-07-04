@@ -49,7 +49,7 @@ export default async function AppPage() {
       .returns<ShoppingListItem[]>(),
     supabase
       .from("meal_plan_entries")
-      .select("*, recipe:recipes(id,title,time_minutes,servings)")
+      .select("*, recipe:recipes(id,title,time_minutes,servings,need_ingredients)")
       .eq("week_start_date", weekStartDate)
       .returns<MealPlanEntryWithRecipe[]>(),
     supabase

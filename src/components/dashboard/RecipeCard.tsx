@@ -8,6 +8,7 @@ type Props = {
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
+  onToggleFavorite: (recipe: Recipe) => Promise<void>;
 };
 
 export default function RecipeCard({
@@ -15,6 +16,7 @@ export default function RecipeCard({
   onAddToShoppingList,
   onAddToMealPlan,
   onToggleShare,
+  onToggleFavorite,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [day, setDay] = useState<Day>("mon");
@@ -22,6 +24,13 @@ export default function RecipeCard({
   const [addingToPlan, setAddingToPlan] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
+
+  async function handleToggleFavorite() {
+    setFavoriting(true);
+    await onToggleFavorite(recipe);
+    setFavoriting(false);
+  }
 
   const shareUrl =
     recipe.share_token && typeof window !== "undefined"
@@ -43,9 +52,27 @@ export default function RecipeCard({
 
   return (
     <article className="paper-card flex flex-col rounded-sm p-5">
-      <h3 className="font-serif text-xl font-medium leading-snug">
-        {recipe.title}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-serif text-xl font-medium leading-snug">
+          {recipe.title}
+        </h3>
+        <button
+          type="button"
+          disabled={favoriting}
+          onClick={handleToggleFavorite}
+          aria-label={
+            recipe.is_favorite ? "Remove from favorites" : "Add to favorites"
+          }
+          aria-pressed={recipe.is_favorite}
+          className={`shrink-0 text-xl leading-none transition disabled:opacity-50 ${
+            recipe.is_favorite
+              ? "text-accent"
+              : "text-line hover:text-ink-muted"
+          }`}
+        >
+          {recipe.is_favorite ? "★" : "☆"}
+        </button>
+      </div>
       <p className="mt-1 font-mono text-xs text-ink-muted">
         {recipe.time_minutes ? `${recipe.time_minutes} min` : null}
         {recipe.time_minutes && recipe.servings ? " · " : null}

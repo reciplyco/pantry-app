@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { DAYS, DAY_LABELS, type MealPlanEntryWithRecipe } from "@/lib/types";
 import { addDays, formatShortDate } from "@/lib/dates";
 
@@ -7,6 +10,7 @@ type Props = {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onRemoveEntry: (id: string) => Promise<void>;
+  onShopForWeek: () => Promise<void>;
 };
 
 export default function MealPlanner({
@@ -15,13 +19,21 @@ export default function MealPlanner({
   onPrevWeek,
   onNextWeek,
   onRemoveEntry,
+  onShopForWeek,
 }: Props) {
+  const [shopping, setShopping] = useState(false);
   const monday = new Date(`${weekStartDate}T00:00:00`);
   const sunday = addDays(monday, 6);
 
+  async function handleShopForWeek() {
+    setShopping(true);
+    await onShopForWeek();
+    setShopping(false);
+  }
+
   return (
     <section>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-2xl font-medium">Meal planner</h2>
         <div className="flex items-center gap-3 font-mono text-xs text-ink-muted">
           <button
@@ -44,6 +56,16 @@ export default function MealPlanner({
             ›
           </button>
         </div>
+        {entries.length > 0 && (
+          <button
+            type="button"
+            disabled={shopping}
+            onClick={handleShopForWeek}
+            className="rounded-full bg-sage px-4 py-1.5 text-sm font-medium text-sage-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {shopping ? "Adding…" : "Shop for the week"}
+          </button>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">

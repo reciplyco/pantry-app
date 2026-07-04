@@ -14,7 +14,20 @@ export type Profile = {
   subscription_status: SubscriptionStatus;
   subscription_current_period_end: string | null;
   created_at: string;
+  dietary_preferences: string[];
+  dietary_notes: string | null;
 };
+
+export const DIETARY_PREFERENCE_OPTIONS = [
+  "vegetarian",
+  "vegan",
+  "pescatarian",
+  "gluten-free",
+  "dairy-free",
+  "nut-free",
+  "low-carb",
+  "keto",
+] as const;
 
 export type PantryItem = {
   id: string;
@@ -47,6 +60,7 @@ export type Recipe = {
   nutrition: Nutrition | null;
   created_at: string;
   share_token: string | null;
+  is_favorite: boolean;
 };
 
 export type ShoppingListItem = {
@@ -83,7 +97,10 @@ export type MealPlanEntry = {
 };
 
 export type MealPlanEntryWithRecipe = MealPlanEntry & {
-  recipe: Pick<Recipe, "id" | "title" | "time_minutes" | "servings"> | null;
+  recipe: Pick<
+    Recipe,
+    "id" | "title" | "time_minutes" | "servings" | "need_ingredients"
+  > | null;
 };
 
 export const FREE_TIER_WEEKLY_LIMIT = 3;

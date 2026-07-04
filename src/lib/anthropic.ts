@@ -95,14 +95,33 @@ const RECIPE_TOOL: Anthropic.Tool = {
   },
 };
 
+export type DietaryConstraints = {
+  preferences: string[];
+  notes: string | null;
+};
+
 export async function generateRecipes(
-  pantryItems: string[]
+  pantryItems: string[],
+  dietary?: DietaryConstraints
 ): Promise<GeneratedRecipe[]> {
+  const constraints: string[] = [];
+  if (dietary?.preferences.length) {
+    constraints.push(dietary.preferences.join(", "));
+  }
+  if (dietary?.notes?.trim()) {
+    constraints.push(dietary.notes.trim());
+  }
+
+  const dietaryInstruction = constraints.length
+    ? `\n\nStrict dietary requirements — every recipe MUST comply, with no exceptions: ${constraints.join("; ")}. If an ingredient the user has on hand conflicts with these requirements, leave it out rather than violating the requirement.`
+    : "";
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
     system:
-      "You are a practical home-cooking assistant. Given a list of ingredients someone already has, suggest recipes that make the most of those ingredients. Prefer recipes that need few, if any, additional ingredients, and note clearly what's missing. Keep steps concise and realistic for a home cook. Give honest, reasonable nutrition estimates per serving.",
+      "You are a practical home-cooking assistant. Given a list of ingredients someone already has, suggest recipes that make the most of those ingredients. Prefer recipes that need few, if any, additional ingredients, and note clearly what's missing. Keep steps concise and realistic for a home cook. Give honest, reasonable nutrition estimates per serving." +
+      dietaryInstruction,
     messages: [
       {
         role: "user",

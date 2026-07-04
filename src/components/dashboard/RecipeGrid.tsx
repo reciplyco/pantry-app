@@ -9,6 +9,7 @@ type Props = {
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
+  onToggleFavorite: (recipe: Recipe) => Promise<void>;
 };
 
 type SortBy = "newest" | "time" | "calories";
@@ -29,10 +30,12 @@ export default function RecipeGrid({
   onAddToShoppingList,
   onAddToMealPlan,
   onToggleShare,
+  onToggleFavorite,
 }: Props) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
   const [readyToCookOnly, setReadyToCookOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const visibleRecipes = useMemo(() => {
     let result = recipes;
@@ -42,6 +45,9 @@ export default function RecipeGrid({
     }
     if (readyToCookOnly) {
       result = result.filter((r) => r.need_ingredients.length === 0);
+    }
+    if (favoritesOnly) {
+      result = result.filter((r) => r.is_favorite);
     }
 
     if (sortBy === "time") {
@@ -58,7 +64,7 @@ export default function RecipeGrid({
     // "newest" is already the incoming order (created_at desc from the server).
 
     return result;
-  }, [recipes, query, sortBy, readyToCookOnly]);
+  }, [recipes, query, sortBy, readyToCookOnly, favoritesOnly]);
 
   return (
     <section>
@@ -91,6 +97,15 @@ export default function RecipeGrid({
               />
               Ready to cook now
             </label>
+            <label className="flex items-center gap-1.5 text-sm text-ink-muted">
+              <input
+                type="checkbox"
+                checked={favoritesOnly}
+                onChange={(e) => setFavoritesOnly(e.target.checked)}
+                className="accent-accent"
+              />
+              Favorites
+            </label>
           </div>
         )}
       </div>
@@ -112,6 +127,7 @@ export default function RecipeGrid({
               onAddToShoppingList={onAddToShoppingList}
               onAddToMealPlan={onAddToMealPlan}
               onToggleShare={onToggleShare}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>

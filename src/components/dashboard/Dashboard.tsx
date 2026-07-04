@@ -135,6 +135,18 @@ export default function Dashboard({
     }
   }
 
+  async function toggleFavorite(recipe: Recipe) {
+    const { data, error } = await supabase
+      .from("recipes")
+      .update({ is_favorite: !recipe.is_favorite })
+      .eq("id", recipe.id)
+      .select("*")
+      .single<Recipe>();
+    if (!error && data) {
+      setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? data : r)));
+    }
+  }
+
   async function addShoppingItem(name: string, quantity: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -219,7 +231,7 @@ export default function Dashboard({
   async function loadWeek(newWeekStartDate: string) {
     const { data } = await supabase
       .from("meal_plan_entries")
-      .select("*, recipe:recipes(id,title,time_minutes,servings)")
+      .select("*, recipe:recipes(id,title,time_minutes,servings,need_ingredients)")
       .eq("week_start_date", newWeekStartDate)
       .returns<MealPlanEntryWithRecipe[]>();
     setWeekStartDate(newWeekStartDate);
@@ -236,11 +248,58 @@ export default function Dashboard({
     const { data, error } = await supabase
       .from("meal_plan_entries")
       .insert({ recipe_id: recipeId, day, week_start_date: weekStartDate })
-      .select("*, recipe:recipes(id,title,time_minutes,servings)")
+      .select("*, recipe:recipes(id,title,time_minutes,servings,need_ingredients)")
       .single<MealPlanEntryWithRecipe>();
     if (!error && data) {
       setMealPlan((prev) => [...prev, data]);
       track(AnalyticsEvent.MealPlanEntryAdded);
+    }
+  }
+
+  async function shopForWeek() {
+    const existingNames = new Set(
+      shoppingList.map((i) => i.name.trim().toLowerCase())
+    );
+    const seen = new Set<string>();
+    const toInsert: {
+      name: string;
+      quantity: string | null;
+      source_recipe_id: string;
+    }[] = [];
+
+    for (const entry of mealPlan) {
+      if (!entry.recipe) continue;
+      for (const ing of entry.recipe.need_ingredients) {
+        const key = ing.name.trim().toLowerCase();
+        if (existingNames.has(key) || seen.has(key)) continue;
+        seen.add(key);
+        toInsert.push({
+          name: ing.name,
+          quantity: ing.quantity || null,
+          source_recipe_id: entry.recipe.id,
+        });
+      }
+    }
+
+    if (toInsert.length === 0) {
+      showToast("Nothing new to add — your shopping list already has it covered.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("shopping_list_items")
+      .insert(toInsert)
+      .select("*")
+      .returns<ShoppingListItem[]>();
+    if (!error && data) {
+      setShoppingList((prev) => [...prev, ...data]);
+      track(AnalyticsEvent.ShoppingListItemAdded, {
+        count: data.length,
+        source: "shop_for_week",
+      });
+      showToast(
+        `Added ${data.length} item${data.length === 1 ? "" : "s"} for this week's meals`
+      );
     }
   }
 
@@ -282,6 +341,7 @@ export default function Dashboard({
         onAddToShoppingList={addNeedIngredientsToShoppingList}
         onAddToMealPlan={addToMealPlan}
         onToggleShare={toggleShare}
+        onToggleFavorite={toggleFavorite}
       />
 
       <ReminderBanner
@@ -304,6 +364,7 @@ export default function Dashboard({
           onPrevWeek={() => goToWeek(-1)}
           onNextWeek={() => goToWeek(1)}
           onRemoveEntry={removeMealPlanEntry}
+          onShopForWeek={shopForWeek}
         />
       </div>
 

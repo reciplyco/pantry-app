@@ -44,9 +44,14 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_status")
+    .select("subscription_status, dietary_preferences, dietary_notes")
     .eq("id", user.id)
-    .single<Pick<Profile, "subscription_status">>();
+    .single<
+      Pick<
+        Profile,
+        "subscription_status" | "dietary_preferences" | "dietary_notes"
+      >
+    >();
 
   const isPro = profile?.subscription_status === "active";
 
@@ -74,7 +79,10 @@ export async function POST(request: Request) {
 
   let generated;
   try {
-    generated = await generateRecipes(pantryItems);
+    generated = await generateRecipes(pantryItems, {
+      preferences: profile?.dietary_preferences ?? [],
+      notes: profile?.dietary_notes ?? null,
+    });
   } catch (err) {
     console.error("Recipe generation failed", err);
     return NextResponse.json(
