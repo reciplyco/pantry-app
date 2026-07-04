@@ -102,7 +102,8 @@ export type DietaryConstraints = {
 
 export async function generateRecipes(
   pantryItems: string[],
-  dietary?: DietaryConstraints
+  dietary?: DietaryConstraints,
+  customInstructions?: string
 ): Promise<GeneratedRecipe[]> {
   const constraints: string[] = [];
   if (dietary?.preferences.length) {
@@ -116,6 +117,10 @@ export async function generateRecipes(
     ? `\n\nStrict dietary requirements — every recipe MUST comply, with no exceptions: ${constraints.join("; ")}. If an ingredient the user has on hand conflicts with these requirements, leave it out rather than violating the requirement.`
     : "";
 
+  const requestLine = customInstructions?.trim()
+    ? `\n\nAdditional request from the user: ${customInstructions.trim()}`
+    : "";
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
@@ -125,7 +130,7 @@ export async function generateRecipes(
     messages: [
       {
         role: "user",
-        content: `Ingredients I have on hand: ${pantryItems.join(", ")}.\n\nSuggest 3 different recipes I could cook using mostly these ingredients.`,
+        content: `Ingredients I have on hand: ${pantryItems.join(", ")}.\n\nSuggest 3 different recipes I could cook using mostly these ingredients.${requestLine}`,
       },
     ],
     tools: [RECIPE_TOOL],

@@ -91,9 +91,12 @@ export default function Dashboard({
     }
   }
 
-  async function handleGenerate() {
-    if (pantryItems.length === 0) {
-      setGenerateError("Add a few pantry items first.");
+  async function handleGenerate(
+    selectedNames: string[],
+    customInstructions: string
+  ) {
+    if (selectedNames.length === 0) {
+      setGenerateError("Select at least one pantry item first.");
       return;
     }
     setGenerating(true);
@@ -102,7 +105,10 @@ export default function Dashboard({
       const res = await fetch("/api/generate-recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pantryItems: pantryItems.map((p) => p.name) }),
+        body: JSON.stringify({
+          pantryItems: selectedNames,
+          customInstructions: customInstructions.trim() || undefined,
+        }),
       });
       const body = await res.json();
       if (!res.ok) {

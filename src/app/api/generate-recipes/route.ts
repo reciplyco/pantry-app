@@ -10,6 +10,7 @@ const requestSchema = z.object({
     .array(z.string().trim().min(1).max(80))
     .min(1, "Add at least one pantry item first.")
     .max(40),
+  customInstructions: z.string().trim().max(100).optional(),
 });
 
 export async function POST(request: Request) {
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { pantryItems } = parsed.data;
+  const { pantryItems, customInstructions } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -79,10 +80,14 @@ export async function POST(request: Request) {
 
   let generated;
   try {
-    generated = await generateRecipes(pantryItems, {
-      preferences: profile?.dietary_preferences ?? [],
-      notes: profile?.dietary_notes ?? null,
-    });
+    generated = await generateRecipes(
+      pantryItems,
+      {
+        preferences: profile?.dietary_preferences ?? [],
+        notes: profile?.dietary_notes ?? null,
+      },
+      customInstructions
+    );
   } catch (err) {
     console.error("Recipe generation failed", err);
     return NextResponse.json(
