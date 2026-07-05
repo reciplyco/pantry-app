@@ -15,11 +15,15 @@ type Props = {
   pendingChange: PendingScheduledChange | null;
 };
 
+// Pinned to UTC so this always agrees with the date shown in AppHeader —
+// otherwise a client component (this one) and a server-rendered one can
+// read the same timestamp a day apart depending on the visitor's timezone.
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 

@@ -92,10 +92,31 @@ export async function POST(request: Request) {
     );
   }
   if (currentItem.price.id === newPriceId) {
-    return NextResponse.json(
-      { error: "You're already on this plan." },
-      { status: 400 }
-    );
+    const isPendingCancellation =
+      subscription.cancel_at_period_end || subscription.cancel_at != null;
+    if (!isPendingCancellation) {
+      return NextResponse.json(
+        { error: "You're already on this plan." },
+        { status: 400 }
+      );
+    }
+    // Same plan, just scheduled to cancel — the Billing tab shows this as
+    // "subscribe again" once canceled, so undo the cancellation instead of
+    // erroring. No price change, so nothing to invoice or prorate.
+    try {
+      await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: false,
+        cancel_at: null,
+      });
+      return NextResponse.json({ kind: "reactivated", tier: targetTierId });
+    } catch (err) {
+      console.error("Failed to reactivate subscription", err);
+      const message =
+        err instanceof Stripe.errors.StripeError
+          ? err.message
+          : "Couldn't reactivate your plan. Try again.";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
   }
 
   const currentTierId = tierForPriceId(currentItem.price.id);

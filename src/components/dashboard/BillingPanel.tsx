@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
@@ -25,11 +26,15 @@ type Props = {
   autocheckoutPeriod: BillingPeriod;
 };
 
+// Pinned to UTC so this always agrees with the date shown in AppHeader —
+// otherwise a client component (this one) and a server-rendered one can
+// read the same timestamp a day apart depending on the visitor's timezone.
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
@@ -61,6 +66,7 @@ export default function BillingPanel({
   const [upgraded, setUpgraded] = useState<{
     tierName: string;
     amountCharged: number | null;
+    reactivated: boolean;
   } | null>(null);
 
   // A checkout session creates a *new* subscription — fine when the user
@@ -72,13 +78,24 @@ export default function BillingPanel({
   const currentTier = getTier(currentTierId);
   const discoveryName = getTier("discovery").name;
 
+  // A canceled subscription is still live in Stripe under the hood (see
+  // effectiveTierId/mapStripeStatus) — generation limits etc. correctly
+  // keep using `currentTierId` for that. But this tab should *look* like
+  // the customer is already back on Discovery, with every plan (including
+  // the one they're canceling out of) shown as something to subscribe to
+  // again — not like they still have an active paid plan.
+  const isCanceling = subscriptionStatus === "canceled";
+  const displayTierId: SubscriptionTier = isCanceling
+    ? "discovery"
+    : currentTierId;
+
   // Downgrades live on the Account settings page, not here — this tab is
   // "your plan, and what you could upgrade to," so tiers ranked below the
   // current one are left off entirely instead of shown with a downgrade
   // link. (A standalone plans page for signed-out visitors is coming
   // separately; this tab doesn't need to double as that.)
   const visibleTiers = TIERS.filter(
-    (t) => t.id === currentTierId || tierRank(t.id) > tierRank(currentTierId)
+    (t) => t.id === displayTierId || tierRank(t.id) > tierRank(displayTierId)
   );
   const gridColsClass: Record<number, string> = {
     1: "sm:grid-cols-1 lg:grid-cols-1",
@@ -133,6 +150,7 @@ export default function BillingPanel({
       setUpgraded({
         tierName: getTier(tierId).name,
         amountCharged: body.amountCharged ?? null,
+        reactivated: body.kind === "reactivated",
       });
       setConfirming(null);
       setLoading(null);
@@ -195,11 +213,21 @@ export default function BillingPanel({
       )}
       {upgraded && (
         <div className="paper-card rounded-sm border-sage/40 p-4 text-sm text-ink">
-          Upgraded to <strong>{upgraded.tierName}</strong>! It&rsquo;s active
-          right away.{" "}
-          {upgraded.amountCharged !== null
-            ? `We credited what you'd already paid this cycle and charged you $${upgraded.amountCharged.toFixed(2)} today for the prorated difference.`
-            : "The prorated difference for the rest of this cycle was charged today."}
+          {upgraded.reactivated ? (
+            <>
+              Your <strong>{upgraded.tierName}</strong> plan is active
+              again — the scheduled cancellation has been undone, and
+              billing continues as normal.
+            </>
+          ) : (
+            <>
+              Upgraded to <strong>{upgraded.tierName}</strong>! It&rsquo;s
+              active right away.{" "}
+              {upgraded.amountCharged !== null
+                ? `We credited what you'd already paid this cycle and charged you $${upgraded.amountCharged.toFixed(2)} today for the prorated difference.`
+                : "The prorated difference for the rest of this cycle was charged today."}
+            </>
+          )}
         </div>
       )}
 
@@ -241,11 +269,16 @@ export default function BillingPanel({
         }`}
       >
         {visibleTiers.map((tier) => {
-          const isCurrent = tier.id === currentTierId;
+          const isCurrent = tier.id === displayTierId;
           const isPending =
             pendingChange !== null && pendingChange.tier === tier.id;
           const isConfirming = confirming === tier.id;
           const showRecommended = tier.recommended && !isCurrent;
+          // Reactivating the plan you're already canceling out of — same
+          // price, so change-plan just undoes the cancellation (see the
+          // isPendingCancellation branch in that route) instead of erroring
+          // "you're already on this plan."
+          const isReactivation = isCanceling && tier.id === currentTierId;
           const displayPrice =
             tier.monthlyPrice === 0
               ? 0
@@ -312,9 +345,9 @@ export default function BillingPanel({
                 {isConfirming ? (
                   <div className="space-y-2">
                     <p className="text-xs text-ink-muted">
-                      Takes effect right away — we&rsquo;ll credit what
-                      you&rsquo;ve already paid this cycle and charge you
-                      the prorated difference today.
+                      {isReactivation
+                        ? "This undoes the scheduled cancellation — same plan, same price, billing continues as normal."
+                        : "Takes effect right away — we'll credit what you've already paid this cycle and charge you the prorated difference today."}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -323,7 +356,11 @@ export default function BillingPanel({
                         onClick={() => upgrade(tier.id as PaidTierId)}
                         className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {loading === tier.id ? "Working…" : "Confirm upgrade"}
+                        {loading === tier.id
+                          ? "Working…"
+                          : isReactivation
+                            ? "Confirm"
+                            : "Confirm upgrade"}
                       </button>
                       <button
                         type="button"
@@ -362,13 +399,24 @@ export default function BillingPanel({
                         : "border border-line hover:border-ink"
                     }`}
                   >
-                    {loading === tier.id ? "Redirecting…" : "Upgrade"}
+                    {loading === tier.id ? "Redirecting…" : "Subscribe"}
                   </button>
+                ) : !isReactivation && tierRank(tier.id) < tierRank(currentTierId) ? (
+                  // A real subscription still exists (hasNoPaidPlan is
+                  // false) and this tier ranks below it — only reachable
+                  // here while canceling, since displayTierId makes every
+                  // tier visible again. Downgrading still belongs on the
+                  // Account settings page, same as when not canceling.
+                  <Link
+                    href="/app/account"
+                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
+                  >
+                    Manage in Account settings →
+                  </Link>
                 ) : (
-                  // Every remaining tier ranks above currentTierId (see
-                  // visibleTiers) and currentTierId is a paid plan (the
-                  // hasNoPaidPlan case above already handled the free-plan
-                  // checkout path), so anything left here is an upgrade.
+                  // Either a real upgrade (tier ranks above currentTierId)
+                  // or a reactivation (same tier, currently canceling) —
+                  // both go through the confirm step and change-plan.
                   <button
                     type="button"
                     disabled={loading !== null}
@@ -379,7 +427,7 @@ export default function BillingPanel({
                         : "border border-line hover:border-ink"
                     }`}
                   >
-                    Upgrade
+                    {isCanceling ? "Subscribe" : "Upgrade"}
                   </button>
                 )}
               </div>

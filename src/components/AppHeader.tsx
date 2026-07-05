@@ -11,10 +11,16 @@ type Props = {
   tabs?: React.ReactNode;
 };
 
+// Pinned to UTC so this always agrees with the same date shown elsewhere
+// (e.g. AccountPanel/BillingPanel) regardless of whether this component
+// happens to render on the server (Vercel's timezone) or the client (the
+// visitor's local timezone) — those can disagree by a day otherwise, since
+// Stripe's period-end timestamps aren't always safely far from midnight UTC.
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
