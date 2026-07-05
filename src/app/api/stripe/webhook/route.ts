@@ -23,19 +23,19 @@ async function syncSubscription(subscription: Stripe.Subscription) {
     .eq("stripe_customer_id", customerId)
     .single();
 
-  // A cancel_at_period_end subscription is still genuinely live in Stripe —
-  // the customer keeps their tier's features and could still un-cancel —
-  // so it maps to "canceled" (for the UI banner) while keeping the old
-  // tier. But once Stripe reports the subscription as truly over (deleted,
-  // or a terminal status that ISN'T just a scheduled cancel), there's
-  // nothing left to retain. Stripe keeps reporting the same
-  // current_period_end even after that point, so date math can't tell
-  // these two states apart at read time — only the raw status can, right
-  // here, when we actually hear about it.
+  // A scheduled cancellation (cancel_at_period_end or cancel_at set, see
+  // mapStripeStatus) is still genuinely live in Stripe — the customer
+  // keeps their tier's features and could still un-cancel — so it maps to
+  // "canceled" (for the UI banner) while keeping the old tier. But once
+  // Stripe's own `status` says the subscription is actually over, there's
+  // nothing left to retain — status is the one field that's only ever
+  // terminal once it's really done, unlike cancel_at/cancel_at_period_end
+  // (which can be set well in advance) or current_period_end (which Stripe
+  // keeps reporting even after the subscription is gone), so it's the only
+  // reliable signal to gate this on.
   const isTerminallyCanceled =
-    !subscription.cancel_at_period_end &&
-    (subscription.status === "canceled" ||
-      subscription.status === "incomplete_expired");
+    subscription.status === "canceled" ||
+    subscription.status === "incomplete_expired";
 
   const newStatus = isTerminallyCanceled ? "free" : mapStripeStatus(subscription);
   const priceId = subscription.items.data[0]?.price.id;

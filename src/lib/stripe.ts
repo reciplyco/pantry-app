@@ -21,12 +21,18 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
 export function mapStripeStatus(
   subscription: Stripe.Subscription
 ): SubscriptionStatus {
-  // A cancellation from the Stripe billing portal sets cancel_at_period_end
-  // rather than changing status — Stripe's status stays "active" right up
-  // until the subscription actually ends. Treat that the same as "canceled"
-  // so the UI can tell the customer right away, instead of only once the
-  // subscription is gone for good.
-  if (subscription.cancel_at_period_end) {
+  // A cancellation from the Stripe billing portal schedules the
+  // cancellation rather than changing status right away — Stripe's status
+  // stays "active" until the subscription actually ends. That's normally
+  // represented by cancel_at_period_end, but this API version can instead
+  // set only `cancel_at` (a timestamp, here equal to the period end)
+  // without ever flipping cancel_at_period_end to true — confirmed by
+  // inspecting an actual webhook payload where a portal cancellation
+  // arrived with cancel_at_period_end: false and cancel_at set. Check both
+  // so neither representation gets missed. Treat this the same as
+  // "canceled" so the UI can tell the customer right away, instead of only
+  // once the subscription is gone for good.
+  if (subscription.cancel_at_period_end || subscription.cancel_at != null) {
     return "canceled";
   }
   switch (subscription.status) {

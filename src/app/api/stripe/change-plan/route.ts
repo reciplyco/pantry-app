@@ -123,9 +123,14 @@ export async function POST(request: Request) {
       const updated = await stripe.subscriptions.update(subscription.id, {
         items: [{ id: currentItem.id, price: newPriceId }],
         proration_behavior: "always_invoice",
-        // A previous cancel-via-portal attempt (or anything else that set
-        // cancel_at_period_end) shouldn't survive an explicit plan change.
+        // A previous cancel-via-portal attempt shouldn't survive an
+        // explicit plan change — clear both representations Stripe uses
+        // for a scheduled cancellation (see mapStripeStatus in stripe.ts:
+        // this API version can set `cancel_at` without ever setting
+        // cancel_at_period_end, so both need clearing or the subscription
+        // would still read as "canceled" after this upgrade).
         cancel_at_period_end: false,
+        cancel_at: null,
         expand: ["latest_invoice"],
       });
 
