@@ -25,12 +25,13 @@ export default function AppHeader({
   tabs,
 }: Props) {
   const tier = getTier(tierId);
+  const discoveryName = getTier("discovery").name;
   const isFree = tierId === "discovery";
   // effectiveTierId keeps a canceled subscriber's old tier active (features,
   // generation caps, etc.) right up until the period actually ends — so the
   // badge would otherwise just say "PRO" with no hint anything's changed.
-  // Show "Free" (what they're really billed as) plus a reminder of what
-  // they're still keeping and until when.
+  // Show the free (Discovery) tier name — what they're really billed as —
+  // plus a reminder of what they're still keeping and until when.
   const isCanceling = subscriptionStatus === "canceled" && !isFree;
 
   const logo = (
@@ -52,7 +53,7 @@ export default function AppHeader({
             : "bg-sage text-sage-ink"
         }`}
       >
-        {isCanceling ? "Free" : tier.name}
+        {isCanceling ? discoveryName : tier.name}
       </span>
       {isCanceling && subscriptionCurrentPeriodEnd && (
         <span className="whitespace-nowrap text-xs text-accent-ink/60">

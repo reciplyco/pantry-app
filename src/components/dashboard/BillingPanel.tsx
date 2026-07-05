@@ -70,6 +70,7 @@ export default function BillingPanel({
   // the Account settings page instead of here.
   const hasNoPaidPlan = currentTierId === "discovery";
   const currentTier = getTier(currentTierId);
+  const discoveryName = getTier("discovery").name;
 
   // Downgrades live on the Account settings page, not here — this tab is
   // "your plan, and what you could upgrade to," so tiers ranked below the
@@ -178,10 +179,10 @@ export default function BillingPanel({
       )}
       {subscriptionStatus === "canceled" && periodEndLabel && (
         <div className="paper-card rounded-sm p-4 text-sm text-ink-muted">
-          You&rsquo;re on the <strong>Free</strong> plan now — your{" "}
-          {currentTier.name} plan is canceled, but you&rsquo;ll keep its
-          features until {periodEndLabel}. After that, it&rsquo;s Free from
-          here.
+          You&rsquo;re on the <strong>{discoveryName}</strong> plan now —
+          your {currentTier.name} plan is canceled, but you&rsquo;ll keep its
+          features until {periodEndLabel}. After that, it&rsquo;s{" "}
+          {discoveryName} from here.
         </div>
       )}
       {pendingChange && (
