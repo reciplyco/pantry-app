@@ -14,6 +14,10 @@ const requestSchema = z.object({
     .max(40),
   customInstructions: z.string().trim().max(100).optional(),
   pantryOnly: z.boolean().optional(),
+  // A single generate action can ask for either 1 recipe (costs 1 monthly
+  // generation) or 5 at once (costs all 5) — no in-between, so the quota
+  // math below just needs to check the count against what's left.
+  recipeCount: z.union([z.literal(1), z.literal(5)]).default(1),
 });
 
 export async function POST(request: Request) {
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { pantryItems, customInstructions, pantryOnly } = parsed.data;
+  const { pantryItems, customInstructions, pantryOnly, recipeCount } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -64,20 +68,24 @@ export async function POST(request: Request) {
     effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
   );
 
-  const { count } = await supabase
+  const { count: usedCount } = await supabase
     .from("generation_log")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
     .gte("created_at", thirtyDaysAgoISOString());
 
-  if ((count ?? 0) >= tier.generationsPerMonth) {
+  const remaining = tier.generationsPerMonth - (usedCount ?? 0);
+
+  if (remaining < recipeCount) {
     return NextResponse.json(
       {
         error: "generation_limit_reached",
         message:
-          tier.id === "ultimate"
-            ? `You've used all ${tier.generationsPerMonth} recipe generations this month.`
-            : `You've used all ${tier.generationsPerMonth} recipe generations this month. Upgrade for more.`,
+          remaining <= 0
+            ? tier.id === "ultimate"
+              ? `You've used all ${tier.generationsPerMonth} recipe generations this month.`
+              : `You've used all ${tier.generationsPerMonth} recipe generations this month. Upgrade for more.`
+            : `You only have ${remaining} generation${remaining === 1 ? "" : "s"} left this month — try generating 1 recipe instead, or upgrade for more.`,
       },
       { status: 402 }
     );
@@ -92,7 +100,8 @@ export async function POST(request: Request) {
         notes: profile?.dietary_notes ?? null,
       },
       customInstructions,
-      pantryOnly
+      pantryOnly,
+      recipeCount
     );
   } catch (err) {
     console.error("Recipe generation failed", err);
@@ -102,10 +111,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // One row per generation "use" — quota is enforced by counting rows above,
+  // so a 5-recipe request logs 5 rows rather than 1, and there's no need for
+  // a separate quantity column.
   const { error: logError } = await supabase
     .from("generation_log")
-    .insert({ user_id: user.id });
-  if (logError) console.error("Failed to write generation_log row", logError);
+    .insert(Array.from({ length: recipeCount }, () => ({ user_id: user.id })));
+  if (logError) console.error("Failed to write generation_log rows", logError);
 
   const rowsToInsert = generated.map((r) => ({
     user_id: user.id,

@@ -1,20 +1,24 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { getIngredientIcon } from "@/lib/ingredient-icons";
 import { getTier } from "@/lib/pricing";
-import type { SubscriptionTier } from "@/lib/types";
+import type { PantryItem, SubscriptionTier } from "@/lib/types";
 import DietaryPreferencesPanel from "./DietaryPreferencesPanel";
 
 const MAX_INSTRUCTIONS_LENGTH = 100;
 
 type Props = {
-  selectedNames: string[];
+  selectedItems: PantryItem[];
+  onDeselect: (id: string) => void;
   totalCount: number;
   customInstructions: string;
   onCustomInstructionsChange: (value: string) => void;
   pantryOnly: boolean;
   onPantryOnlyChange: (value: boolean) => void;
+  recipeCount: 1 | 5;
+  onRecipeCountChange: (value: 1 | 5) => void;
   onGenerate: () => Promise<void>;
   generating: boolean;
   generateError: string | null;
@@ -26,12 +30,15 @@ type Props = {
 };
 
 export default function GenerateTab({
-  selectedNames,
+  selectedItems,
+  onDeselect,
   totalCount,
   customInstructions,
   onCustomInstructionsChange,
   pantryOnly,
   onPantryOnlyChange,
+  recipeCount,
+  onRecipeCountChange,
   onGenerate,
   generating,
   generateError,
@@ -43,7 +50,17 @@ export default function GenerateTab({
 }: Props) {
   const isCapped = remaining <= 0;
   const isTopTier = getTier(tierId).id === "ultimate";
-  const hasSelection = selectedNames.length > 0;
+  const hasSelection = selectedItems.length > 0;
+  const canPickFive = remaining >= 5;
+
+  // The 5-recipe option can become unavailable out from under the user
+  // (e.g. they just spent their last few generations) — fall back to 1
+  // rather than leaving an unusable option selected.
+  useEffect(() => {
+    if (recipeCount === 5 && !canPickFive) {
+      onRecipeCountChange(1);
+    }
+  }, [recipeCount, canPickFive, onRecipeCountChange]);
 
   return (
     <div className="flex min-h-[65vh] flex-col justify-center">
@@ -75,7 +92,7 @@ export default function GenerateTab({
           <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
             {totalCount === 0
               ? "No pantry items yet"
-              : `Using ${selectedNames.length} of ${totalCount} pantry item${totalCount === 1 ? "" : "s"}`}
+              : `Using ${selectedItems.length} of ${totalCount} pantry item${totalCount === 1 ? "" : "s"}`}
           </p>
           <div className="shrink-0 font-mono text-xs text-ink-muted">
             <span className={isCapped ? "text-accent" : undefined}>
@@ -94,13 +111,21 @@ export default function GenerateTab({
           </p>
         ) : (
           <ul className="mt-3 flex flex-wrap gap-2">
-            {selectedNames.map((name) => (
+            {selectedItems.map((item) => (
               <li
-                key={name}
-                className="flex items-center gap-1.5 rounded-full border border-line bg-paper-alt px-3 py-1.5 text-sm text-ink"
+                key={item.id}
+                className="flex items-center gap-1.5 rounded-full border border-line bg-paper-alt py-1.5 pl-3 pr-1.5 text-sm text-ink"
               >
-                <span aria-hidden="true">{getIngredientIcon(name)}</span>
-                {name}
+                <span aria-hidden="true">{getIngredientIcon(item.name)}</span>
+                {item.name}
+                <button
+                  type="button"
+                  onClick={() => onDeselect(item.id)}
+                  aria-label={`Remove "${item.name}" from this generation`}
+                  className="flex h-4 w-4 items-center justify-center rounded-full leading-none text-ink-muted transition hover:bg-line hover:text-ink"
+                >
+                  ×
+                </button>
               </li>
             ))}
           </ul>
@@ -148,6 +173,45 @@ export default function GenerateTab({
         </label>
 
         <div className="mt-6">
+          <p className="mb-2 text-sm text-ink-muted">How many recipes?</p>
+          <div className="inline-flex rounded-full border border-line p-1">
+            <button
+              type="button"
+              onClick={() => onRecipeCountChange(1)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                recipeCount === 1
+                  ? "bg-accent text-accent-ink"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              1 recipe
+            </button>
+            <button
+              type="button"
+              onClick={() => onRecipeCountChange(5)}
+              disabled={!canPickFive}
+              title={
+                canPickFive
+                  ? undefined
+                  : "Need 5 generations left this month to pick this"
+              }
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                recipeCount === 5
+                  ? "bg-accent text-accent-ink"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              5 recipes
+            </button>
+          </div>
+          {recipeCount === 5 && (
+            <p className="mt-1.5 text-xs text-ink-muted">
+              Uses 5 of your generations at once.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6">
           <button
             type="button"
             onClick={onGenerate}
@@ -163,8 +227,10 @@ export default function GenerateTab({
                   <span className="anim-bounce-dot h-1.5 w-1.5 rounded-full bg-accent-ink" />
                 </span>
               </span>
+            ) : recipeCount === 5 ? (
+              "Generate 5 recipes"
             ) : (
-              "Generate recipes"
+              "Generate recipe"
             )}
           </button>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-center">

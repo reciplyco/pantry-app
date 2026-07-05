@@ -23,7 +23,8 @@ export type GeneratedRecipe = {
   nutrition: Nutrition;
 };
 
-const RECIPE_TOOL: Anthropic.Tool = {
+function buildRecipeTool(count: number): Anthropic.Tool {
+  return {
   name: "return_recipes",
   description:
     "Return recipe suggestions built around the ingredients the user already has.",
@@ -32,8 +33,8 @@ const RECIPE_TOOL: Anthropic.Tool = {
     properties: {
       recipes: {
         type: "array",
-        minItems: 3,
-        maxItems: 3,
+        minItems: count,
+        maxItems: count,
         items: {
           type: "object",
           properties: {
@@ -93,7 +94,8 @@ const RECIPE_TOOL: Anthropic.Tool = {
     },
     required: ["recipes"],
   },
-};
+  };
+}
 
 export type DietaryConstraints = {
   preferences: string[];
@@ -104,7 +106,8 @@ export async function generateRecipes(
   pantryItems: string[],
   dietary?: DietaryConstraints,
   customInstructions?: string,
-  pantryOnly?: boolean
+  pantryOnly?: boolean,
+  count: number = 3
 ): Promise<GeneratedRecipe[]> {
   const constraints: string[] = [];
   if (dietary?.preferences.length) {
@@ -126,9 +129,14 @@ export async function generateRecipes(
     ? `\n\nAdditional request from the user: ${customInstructions.trim()}`
     : "";
 
+  // Token budget scales with how many recipes are being asked for at once —
+  // the fixed 4096 that worked for a flat 3-recipe request under- or
+  // over-shoots now that callers can ask for as few as 1 or as many as 5.
+  const maxTokens = Math.min(8192, Math.max(2048, count * 1600));
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4096,
+    max_tokens: maxTokens,
     system:
       "You are a practical home-cooking assistant. Given a list of ingredients someone already has, suggest recipes that make the most of those ingredients. Prefer recipes that need few, if any, additional ingredients, and note clearly what's missing. Keep steps concise and realistic for a home cook. Give honest, reasonable nutrition estimates per serving." +
       dietaryInstruction +
@@ -136,10 +144,10 @@ export async function generateRecipes(
     messages: [
       {
         role: "user",
-        content: `Ingredients I have on hand: ${pantryItems.join(", ")}.\n\nSuggest 3 different recipes I could cook using mostly these ingredients.${requestLine}`,
+        content: `Ingredients I have on hand: ${pantryItems.join(", ")}.\n\nSuggest ${count} different recipe${count === 1 ? "" : "s"} I could cook using mostly these ingredients.${requestLine}`,
       },
     ],
-    tools: [RECIPE_TOOL],
+    tools: [buildRecipeTool(count)],
     tool_choice: { type: "tool", name: "return_recipes" },
   });
 

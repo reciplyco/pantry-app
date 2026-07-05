@@ -37,6 +37,7 @@ export default function RecipeCard({
   const [favoriting, setFavoriting] = useState(false);
   const [pop, setPop] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -90,23 +91,72 @@ export default function RecipeCard({
           <h3 className="font-serif text-xl font-medium leading-snug">
             {recipe.title}
           </h3>
-          <button
-            type="button"
-            disabled={favoriting}
-            onClick={handleToggleFavorite}
-            aria-label={
-              recipe.is_favorite ? "Remove from favorites" : "Add to favorites"
-            }
-            aria-pressed={recipe.is_favorite}
-            className={`shrink-0 text-xl leading-none transition disabled:opacity-50 ${pop ? "anim-pop" : ""} ${
-              recipe.is_favorite
-                ? "text-accent"
-                : "text-line hover:text-ink-muted"
-            }`}
-          >
-            {recipe.is_favorite ? "★" : "☆"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              aria-label={`Delete "${recipe.title}"`}
+              className="rounded-full p-0.5 text-line transition hover:text-accent active:scale-95"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-[18px] w-[18px]"
+                aria-hidden="true"
+              >
+                <path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6m2 0-.6 9.4A2 2 0 0 1 11.4 17H8.6a2 2 0 0 1-2-1.6L6 6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              disabled={favoriting}
+              onClick={handleToggleFavorite}
+              aria-label={
+                recipe.is_favorite ? "Remove from favorites" : "Add to favorites"
+              }
+              aria-pressed={recipe.is_favorite}
+              className={`text-xl leading-none transition disabled:opacity-50 ${pop ? "anim-pop" : ""} ${
+                recipe.is_favorite
+                  ? "text-accent"
+                  : "text-line hover:text-ink-muted"
+              }`}
+            >
+              {recipe.is_favorite ? "★" : "☆"}
+            </button>
+          </div>
         </div>
+
+        {confirmingDelete && (
+          <div className="mt-2 rounded-sm border border-accent/30 bg-accent/5 p-3 text-sm">
+            <p className="text-ink">Delete this recipe?</p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              You&rsquo;ll get a chance to undo it right after.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDelete}
+                className="rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded-full border border-line px-3 py-1.5 text-xs font-medium transition hover:border-ink disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <p className="mt-1 font-mono text-xs text-ink-muted">
           {recipe.time_minutes ? `${recipe.time_minutes} min` : null}
           {recipe.time_minutes && recipe.servings ? " · " : null}
@@ -162,36 +212,25 @@ export default function RecipeCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="text-sm font-medium text-accent underline underline-offset-2 transition active:scale-95"
-            >
-              {expanded ? "Hide recipe" : "View recipe"}
-            </button>
-            <button
-              type="button"
-              disabled={sharing}
-              onClick={handleToggleShare}
-              className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink active:scale-95 disabled:opacity-50"
-            >
-              {sharing
-                ? "…"
-                : recipe.share_token
-                  ? "Stop sharing"
-                  : "Share"}
-            </button>
-          </div>
+        <div className="mt-3 flex items-center gap-4">
           <button
             type="button"
-            disabled={deleting}
-            onClick={handleDelete}
-            aria-label={`Delete "${recipe.title}"`}
-            className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-accent active:scale-95 disabled:opacity-50"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-sm font-medium text-accent underline underline-offset-2 transition active:scale-95"
           >
-            Delete
+            {expanded ? "Hide recipe" : "View recipe"}
+          </button>
+          <button
+            type="button"
+            disabled={sharing}
+            onClick={handleToggleShare}
+            className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink active:scale-95 disabled:opacity-50"
+          >
+            {sharing
+              ? "…"
+              : recipe.share_token
+                ? "Stop sharing"
+                : "Share"}
           </button>
         </div>
 

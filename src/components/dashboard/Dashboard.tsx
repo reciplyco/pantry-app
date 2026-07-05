@@ -81,6 +81,7 @@ export default function Dashboard({
   const [deselectedIds, setDeselectedIds] = useState<Set<string>>(new Set());
   const [customInstructions, setCustomInstructions] = useState("");
   const [pantryOnly, setPantryOnly] = useState(false);
+  const [recipeCount, setRecipeCount] = useState<1 | 5>(1);
 
   const remaining = Math.max(0, generationsPerMonth - usedThisMonth);
 
@@ -108,9 +109,8 @@ export default function Dashboard({
     );
   }
 
-  const selectedNames = pantryItems
-    .filter((item) => isSelected(item.id))
-    .map((item) => item.name);
+  const selectedItems = pantryItems.filter((item) => isSelected(item.id));
+  const selectedNames = selectedItems.map((item) => item.name);
 
   function showToast(message: string, onUndo?: () => void) {
     setToast({ id: Date.now(), message, onUndo });
@@ -154,6 +154,7 @@ export default function Dashboard({
           pantryItems: selectedNames,
           customInstructions: customInstructions.trim() || undefined,
           pantryOnly,
+          recipeCount,
         }),
       });
       const body = await res.json();
@@ -162,7 +163,7 @@ export default function Dashboard({
         return;
       }
       setRecipes((prev) => [...(body.recipes as Recipe[]), ...prev]);
-      setUsedThisMonth((prev) => prev + 1);
+      setUsedThisMonth((prev) => prev + recipeCount);
       track(AnalyticsEvent.RecipeGenerated, {
         count: (body.recipes as Recipe[]).length,
       });
@@ -452,12 +453,15 @@ export default function Dashboard({
 
         {activeTab === "generate" && (
           <GenerateTab
-            selectedNames={selectedNames}
+            selectedItems={selectedItems}
+            onDeselect={toggleSelected}
             totalCount={pantryItems.length}
             customInstructions={customInstructions}
             onCustomInstructionsChange={setCustomInstructions}
             pantryOnly={pantryOnly}
             onPantryOnlyChange={setPantryOnly}
+            recipeCount={recipeCount}
+            onRecipeCountChange={setRecipeCount}
             onGenerate={handleGenerate}
             generating={generating}
             generateError={generateError}
