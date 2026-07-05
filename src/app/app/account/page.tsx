@@ -20,11 +20,7 @@ export default async function AccountPage() {
     .single<Profile>();
 
   const subscriptionStatus = profile?.subscription_status ?? "free";
-  const currentTierId = effectiveTierId(
-    subscriptionStatus,
-    profile?.subscription_tier,
-    profile?.subscription_current_period_end
-  );
+  const currentTierId = effectiveTierId(subscriptionStatus, profile?.subscription_tier);
 
   const pendingChange =
     subscriptionStatus === "active" && profile?.stripe_customer_id

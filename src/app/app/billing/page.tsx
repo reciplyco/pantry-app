@@ -27,11 +27,7 @@ export default async function BillingPage({
     .single<Profile>();
 
   const subscriptionStatus = profile?.subscription_status ?? "free";
-  const currentTierId = effectiveTierId(
-    subscriptionStatus,
-    profile?.subscription_tier,
-    profile?.subscription_current_period_end
-  );
+  const currentTierId = effectiveTierId(subscriptionStatus, profile?.subscription_tier);
 
   // A visitor who picked a plan on the marketing pricing section before
   // signing up arrives here with ?autocheckout=&period= — see LoginForm.tsx

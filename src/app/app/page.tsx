@@ -59,11 +59,7 @@ export default async function AppPage() {
   ]);
 
   const tier = getTier(
-    effectiveTierId(
-      profile?.subscription_status ?? "free",
-      profile?.subscription_tier,
-      profile?.subscription_current_period_end
-    )
+    effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
   );
 
   return (

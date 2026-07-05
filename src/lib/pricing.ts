@@ -109,22 +109,19 @@ export function tierRank(id: TierId): number {
 
 /** Whichever tier a profile's limits/features are actually determined by
  * right now — a lapsed or past-due subscription doesn't keep paid perks.
- * A "canceled" subscription (cancel-at-period-end, set from the Stripe
- * billing portal) still keeps its tier until `currentPeriodEnd` passes,
- * matching the "keep your features until X, then move to Discovery"
- * promise shown in the billing/account UI. */
+ * A "canceled" status means cancel-at-period-end (set from the Stripe
+ * billing portal): the subscription is still genuinely live in Stripe, so
+ * it keeps its tier until the webhook hears the subscription is truly over
+ * and resets subscription_tier to "discovery" itself (see the webhook's
+ * syncSubscription) — this function doesn't need to guess from a date,
+ * since Stripe can keep reporting the same current_period_end well after a
+ * subscription is actually gone. */
 export function effectiveTierId(
   subscriptionStatus: string,
-  subscriptionTier: TierId | null | undefined,
-  currentPeriodEnd?: string | null
+  subscriptionTier: TierId | null | undefined
 ): TierId {
   if (!subscriptionTier) return "discovery";
-  if (subscriptionStatus === "active") return subscriptionTier;
-  if (
-    subscriptionStatus === "canceled" &&
-    currentPeriodEnd &&
-    new Date(currentPeriodEnd).getTime() > Date.now()
-  ) {
+  if (subscriptionStatus === "active" || subscriptionStatus === "canceled") {
     return subscriptionTier;
   }
   return "discovery";

@@ -48,27 +48,20 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select(
-      "subscription_status, subscription_tier, subscription_current_period_end, dietary_preferences, dietary_notes"
-    )
+    .select("subscription_status, subscription_tier, dietary_preferences, dietary_notes")
     .eq("id", user.id)
     .single<
       Pick<
         Profile,
         | "subscription_status"
         | "subscription_tier"
-        | "subscription_current_period_end"
         | "dietary_preferences"
         | "dietary_notes"
       >
     >();
 
   const tier = getTier(
-    effectiveTierId(
-      profile?.subscription_status ?? "free",
-      profile?.subscription_tier,
-      profile?.subscription_current_period_end
-    )
+    effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
   );
 
   const { count } = await supabase
