@@ -1,5 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import GenerateShowcase from "@/components/marketing/GenerateShowcase";
+import MarketingPricing from "@/components/marketing/MarketingPricing";
 
 const FEATURES = [
   {
@@ -24,7 +28,16 @@ const FEATURES = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/app");
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       <div className="relative overflow-hidden bg-hero">
@@ -68,11 +81,17 @@ export default function LandingPage() {
         </svg>
 
         <header className="relative mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-          <span className="flex items-center gap-2 font-serif text-4xl font-medium tracking-tight">
-            <Image src="/logo-mark.png" alt="" width={36} height={41} className="h-9 w-auto" />
+          <span className="flex items-center gap-2 font-serif text-2xl font-medium tracking-tight sm:text-4xl">
+            <Image src="/logo-mark.png" alt="" width={36} height={41} className="h-7 w-auto sm:h-9" />
             Reciply
           </span>
-          <nav className="flex items-center gap-5 text-sm">
+          <nav className="flex items-center gap-3 text-sm sm:gap-5">
+            <a
+              href="#pricing"
+              className="hidden text-ink-muted transition hover:text-ink sm:inline"
+            >
+              Pricing
+            </a>
             <Link
               href="/login"
               className="text-ink-muted transition hover:text-ink"
@@ -88,71 +107,60 @@ export default function LandingPage() {
           </nav>
         </header>
 
-        <section className="relative mx-auto grid w-full max-w-5xl items-center gap-10 px-6 py-16 md:grid-cols-2 md:py-24">
-          <div>
-            <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
-              No more &ldquo;what&rsquo;s for dinner&rdquo;
-            </p>
-            <h1 className="font-serif text-5xl leading-[1.05] font-medium tracking-tight text-ink md:text-6xl">
-              Cook what&rsquo;s already in your kitchen.
-            </h1>
-            <p className="mt-6 max-w-md text-lg text-ink-muted">
-              List the ingredients you have on hand. Reciply turns them into
-              recipes, a shopping list for anything missing, and a weekly
-              meal plan — automatically.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                href="/login?tab=signup"
-                className="rounded-full bg-accent px-6 py-3 font-medium text-accent-ink transition hover:opacity-90"
-              >
-                Get started free
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full border border-line px-6 py-3 font-medium text-ink transition hover:border-ink"
-              >
-                Sign in
-              </Link>
-            </div>
-            <p className="mt-4 font-mono text-xs text-ink-muted">
-              Free — 3 recipe generations / week. Upgrade any time.
-            </p>
+        <section className="relative mx-auto w-full max-w-3xl px-6 py-16 text-center md:py-24">
+          <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
+            No more &ldquo;what&rsquo;s for dinner&rdquo;
+          </p>
+          <h1 className="font-serif text-5xl leading-[1.05] font-medium tracking-tight text-ink md:text-6xl">
+            Cook what&rsquo;s already in your kitchen.
+          </h1>
+          <p className="mx-auto mt-6 max-w-md text-lg text-ink-muted">
+            List the ingredients you have on hand. Reciply turns them into
+            recipes, a shopping list for anything missing, and a weekly
+            meal plan — automatically.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/login?tab=signup"
+              className="rounded-full bg-accent px-6 py-3 font-medium text-accent-ink transition hover:opacity-90"
+            >
+              Get started free
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-full border border-line px-6 py-3 font-medium text-ink transition hover:border-ink"
+            >
+              Sign in
+            </Link>
           </div>
-
-          <div className="paper-card -rotate-1 rounded-sm p-6">
-            <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
-              Tonight&rsquo;s pantry
-            </p>
-            <ul className="mt-3 space-y-1 font-mono text-sm text-ink">
-              <li>— chickpeas (1 can)</li>
-              <li>— spinach</li>
-              <li>— garlic</li>
-              <li>— rice</li>
-              <li>— lemon</li>
-            </ul>
-            <div className="my-4 border-t border-dashed border-line" />
-            <p className="font-serif text-xl font-medium">
-              Lemony Chickpea &amp; Spinach Rice
-            </p>
-            <p className="mt-1 text-sm text-ink-muted">
-              25 min · 2 servings · 410 cal
-            </p>
-          </div>
+          <p className="mt-4 font-mono text-xs text-ink-muted">
+            Free — 3 recipe generations / week. Upgrade any time.
+          </p>
         </section>
       </div>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6">
-        <section className="grid gap-4 pb-24 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((f) => (
-            <div key={f.tag} className="paper-card rounded-sm p-5">
-              <span className="font-mono text-xs text-accent">{f.tag}</span>
-              <h3 className="mt-2 font-serif text-lg font-medium">
-                {f.title}
-              </h3>
-              <p className="mt-2 text-sm text-ink-muted">{f.body}</p>
-            </div>
-          ))}
+        <GenerateShowcase />
+
+        <section id="pricing" className="py-16">
+          <MarketingPricing />
+        </section>
+
+        <section className="pb-24">
+          <p className="text-center font-mono text-xs uppercase tracking-widest text-ink-muted">
+            How it works
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((f) => (
+              <div key={f.tag} className="paper-card rounded-sm p-5">
+                <span className="font-mono text-xs text-accent">{f.tag}</span>
+                <h3 className="mt-2 font-serif text-lg font-medium">
+                  {f.title}
+                </h3>
+                <p className="mt-2 text-sm text-ink-muted">{f.body}</p>
+              </div>
+            ))}
+          </div>
         </section>
       </main>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
+import { PAID_TIER_IDS, type PaidTierId } from "@/lib/pricing";
 
 type Tab = "signin" | "signup";
 
@@ -11,6 +12,18 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab: Tab = searchParams.get("tab") === "signup" ? "signup" : "signin";
+
+  // A visitor who picked a plan on the marketing pricing section arrives
+  // here with ?plan=&period= attached — carry that through sign-in/sign-up
+  // so they land straight in checkout for that plan instead of having to
+  // pick it again once inside the app.
+  const planParam = searchParams.get("plan");
+  const plan: PaidTierId | null =
+    planParam && (PAID_TIER_IDS as string[]).includes(planParam)
+      ? (planParam as PaidTierId)
+      : null;
+  const period = searchParams.get("period") === "yearly" ? "yearly" : "monthly";
+  const next = plan ? `/app/billing?autocheckout=${plan}&period=${period}` : "/app";
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
@@ -41,14 +54,19 @@ export default function LoginForm() {
         identifyUser(data.user.id, data.user.email ?? null);
         track(AnalyticsEvent.UserSignedIn);
       }
-      router.push("/app");
+      router.push(next);
       router.refresh();
     } else {
+      // Email/password signups still require Supabase's "confirm your
+      // email" hop before auth/callback ever runs, so this can't redirect
+      // straight to checkout the way sign-in or Google OAuth can — but
+      // `next` survives that hop via emailRedirectTo, so autocheckout still
+      // fires as soon as they click the confirmation link.
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
       setLoading(false);
@@ -70,7 +88,7 @@ export default function LoginForm() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     if (error) setError(error.message);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
@@ -21,6 +21,8 @@ type Props = {
   subscriptionStatus: SubscriptionStatus;
   subscriptionCurrentPeriodEnd: string | null;
   pendingChange: PendingScheduledChange | null;
+  autocheckoutTier: PaidTierId | null;
+  autocheckoutPeriod: BillingPeriod;
 };
 
 function formatDate(iso: string): string {
@@ -36,12 +38,26 @@ export default function BillingPanel({
   subscriptionStatus,
   subscriptionCurrentPeriodEnd,
   pendingChange,
+  autocheckoutTier,
+  autocheckoutPeriod,
 }: Props) {
   const router = useRouter();
-  const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  // Defaults to whatever period a visitor picked on the marketing pricing
+  // section before signing up (see autocheckoutPeriod below) — "monthly"
+  // when there's no such plan in flight, same as before.
+  const [period, setPeriod] = useState<BillingPeriod>(autocheckoutPeriod);
   const [loading, setLoading] = useState<PaidTierId | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<PaidTierId | null>(null);
+  // Pre-opens the confirm-upgrade step when arriving via autocheckout and
+  // the visitor already has some paid plan (see the effect below for why
+  // that case doesn't just fire checkout() directly).
+  const [confirming, setConfirming] = useState<PaidTierId | null>(() =>
+    autocheckoutTier &&
+    currentTierId !== "discovery" &&
+    tierRank(autocheckoutTier) > tierRank(currentTierId)
+      ? autocheckoutTier
+      : null
+  );
   const [upgraded, setUpgraded] = useState<{
     tierName: string;
     amountCharged: number | null;
@@ -70,10 +86,13 @@ export default function BillingPanel({
     4: "sm:grid-cols-2 lg:grid-cols-4",
   };
 
-  async function checkout(tierId: PaidTierId) {
+  // useCallback (rather than a plain function) so the autocheckout effect
+  // below can list it as a dependency without that dependency changing on
+  // every render.
+  const checkout = useCallback(async (tierId: PaidTierId, source: "landing" | "billing" = "billing") => {
     setLoading(tierId);
     setError(null);
-    track(AnalyticsEvent.UpgradeClicked, { plan: `${tierId}_${period}` });
+    track(AnalyticsEvent.UpgradeClicked, { plan: `${tierId}_${period}`, source });
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -91,7 +110,7 @@ export default function BillingPanel({
       setError("Couldn't start checkout. Try again.");
       setLoading(null);
     }
-  }
+  }, [period]);
 
   async function upgrade(tierId: PaidTierId) {
     setLoading(tierId);
@@ -124,6 +143,26 @@ export default function BillingPanel({
       setLoading(null);
     }
   }
+
+  // A visitor who picked a plan on the marketing pricing section before
+  // signing up, and has no paid plan yet (the overwhelmingly common case
+  // for this funnel), skips straight to Stripe Checkout instead of having
+  // to click "Upgrade" again — the initial `confirming` state above already
+  // handles the rarer existing-subscriber case without needing an effect.
+  // Guarded by a ref (rather than an empty dependency array) so the actual
+  // checkout() call only ever fires once per mount, while the dependency
+  // array itself stays honest for exhaustive-deps. checkout() itself sets
+  // component state (loading/error) as soon as it runs, which is only safe
+  // to trigger from an effect one tick after mount rather than synchronously
+  // during the effect's commit — hence the 0ms timeout, not a busy-wait.
+  const autocheckoutHandled = useRef(false);
+  useEffect(() => {
+    if (autocheckoutHandled.current || !autocheckoutTier || !hasNoPaidPlan) return;
+    if (tierRank(autocheckoutTier) <= tierRank(currentTierId)) return;
+    autocheckoutHandled.current = true;
+    const timer = setTimeout(() => checkout(autocheckoutTier, "landing"), 0);
+    return () => clearTimeout(timer);
+  }, [autocheckoutTier, currentTierId, hasNoPaidPlan, checkout]);
 
   const periodEndLabel = subscriptionCurrentPeriodEnd
     ? formatDate(subscriptionCurrentPeriodEnd)
