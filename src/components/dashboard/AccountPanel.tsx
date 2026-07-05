@@ -195,11 +195,11 @@ export default function AccountPanel({
             )}
             {subscriptionStatus === "canceled" && periodEndLabel && (
               <p className="mt-2 text-sm text-ink-muted">
-                Your {currentTier.name} plan is canceled, but you&rsquo;ll
-                keep its features — {currentTier.generationsPerMonth} AI
-                generations/month and everything else — until{" "}
-                {periodEndLabel}. After that, it&rsquo;s the {discoveryName}{" "}
-                plan from here.
+                Your {currentTier.name}{" "}plan is canceled, but
+                you&rsquo;ll keep its features —{" "}
+                {currentTier.generationsPerMonth}{" "}AI generations/month
+                and everything else — until {periodEndLabel}. After that,
+                it&rsquo;s the {discoveryName}{" "}plan from here.
               </p>
             )}
             {pendingChange && (
