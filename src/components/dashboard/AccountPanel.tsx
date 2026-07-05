@@ -231,7 +231,7 @@ export default function AccountPanel({
                 {portalLoading ? "Opening…" : "Manage subscription"}
               </button>
               <Link
-                href="/app/billing"
+                href="/app/plans"
                 className="rounded-full border border-line px-5 py-2 text-sm font-medium transition hover:border-ink"
               >
                 See all plans

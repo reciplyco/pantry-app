@@ -23,6 +23,11 @@ type Props = {
   pendingChange: PendingScheduledChange | null;
   autocheckoutTier: PaidTierId | null;
   autocheckoutPeriod: BillingPeriod;
+  // The Billing tab only shows the current plan and upgrades — downgrades
+  // live on the Account settings page. The standalone "all plans" page
+  // (linked from Account's "See all plans") sets this to show every tier,
+  // current-or-not, the same way the signed-out marketing pricing page does.
+  showAllTiers?: boolean;
 };
 
 // Pinned to UTC so this always agrees with the date shown in AppHeader —
@@ -44,6 +49,7 @@ export default function BillingPanel({
   pendingChange,
   autocheckoutTier,
   autocheckoutPeriod,
+  showAllTiers = false,
 }: Props) {
   const router = useRouter();
   // Defaults to whatever period a visitor picked on the marketing pricing
@@ -100,10 +106,13 @@ export default function BillingPanel({
   // on the Account settings page. While canceling or mid-downgrade,
   // displayTierId is whatever tier the customer is headed to, so every
   // tier (including ones below the real currentTierId) shows up here again
-  // — see isDowngrade below for how those are handled.
-  const visibleTiers = TIERS.filter(
-    (t) => t.id === displayTierId || tierRank(t.id) > tierRank(displayTierId)
-  );
+  // — see isDowngrade below for how those are handled. showAllTiers (the
+  // standalone "all plans" page) skips this filtering entirely.
+  const visibleTiers = showAllTiers
+    ? TIERS
+    : TIERS.filter(
+        (t) => t.id === displayTierId || tierRank(t.id) > tierRank(displayTierId)
+      );
   const gridColsClass: Record<number, string> = {
     1: "sm:grid-cols-1 lg:grid-cols-1",
     2: "sm:grid-cols-2 lg:grid-cols-2",
@@ -302,10 +311,9 @@ export default function BillingPanel({
           const isReactivation =
             (isCanceling || pendingChange != null) &&
             tier.id === currentTierId;
-          // Only reachable while canceling or mid-downgrade — visibleTiers
-          // is filtered by displayTierId then, so a tier ranked below the
-          // real currentTierId can show up here even though it's a genuine
-          // downgrade from what's still actually active in Stripe.
+          // Ranked below the real currentTierId — only reachable while
+          // canceling or mid-downgrade (visibleTiers is filtered by
+          // displayTierId then) or on the showAllTiers page (unfiltered).
           const isDowngrade =
             !isReactivation && tierRank(tier.id) < tierRank(currentTierId);
           const displayPrice =
@@ -442,7 +450,11 @@ export default function BillingPanel({
                         : "border border-line hover:border-ink"
                     }`}
                   >
-                    {showsAsSubscribe ? "Subscribe" : "Upgrade"}
+                    {isDowngrade
+                      ? "Downgrade"
+                      : showsAsSubscribe
+                        ? "Subscribe"
+                        : "Upgrade"}
                   </button>
                 )}
               </div>
