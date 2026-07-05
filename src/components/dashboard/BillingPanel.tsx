@@ -178,8 +178,10 @@ export default function BillingPanel({
       )}
       {subscriptionStatus === "canceled" && periodEndLabel && (
         <div className="paper-card rounded-sm p-4 text-sm text-ink-muted">
-          Your plan is canceled — you&rsquo;ll keep its features until{" "}
-          {periodEndLabel}, then move to Discovery.
+          You&rsquo;re on the <strong>Free</strong> plan now — your{" "}
+          {currentTier.name} plan is canceled, but you&rsquo;ll keep its
+          features until {periodEndLabel}. After that, it&rsquo;s Free from
+          here.
         </div>
       )}
       {pendingChange && (

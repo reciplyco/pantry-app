@@ -175,7 +175,11 @@ export default function AccountPanel({
         ) : (
           <>
             <p className="mt-1 text-sm text-ink-muted">
-              You&rsquo;re on the {currentTier.name} plan.
+              {subscriptionStatus === "canceled" ? (
+                <>You&rsquo;re on the Free plan.</>
+              ) : (
+                <>You&rsquo;re on the {currentTier.name} plan.</>
+              )}
             </p>
 
             {subscriptionStatus === "past_due" && (
@@ -186,8 +190,11 @@ export default function AccountPanel({
             )}
             {subscriptionStatus === "canceled" && periodEndLabel && (
               <p className="mt-2 text-sm text-ink-muted">
-                Your plan is canceled — you&rsquo;ll keep its features until{" "}
-                {periodEndLabel}, then move to Discovery.
+                Your {currentTier.name} plan is canceled, but you&rsquo;ll
+                keep its features — {currentTier.generationsPerMonth} AI
+                generations/month and everything else — until{" "}
+                {periodEndLabel}. After that, it&rsquo;s the Free plan from
+                here.
               </p>
             )}
             {pendingChange && (

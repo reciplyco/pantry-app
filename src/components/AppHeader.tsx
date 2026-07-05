@@ -2,16 +2,36 @@ import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { getTier } from "@/lib/pricing";
-import type { SubscriptionTier } from "@/lib/types";
+import type { SubscriptionStatus, SubscriptionTier } from "@/lib/types";
 
 type Props = {
   tierId: SubscriptionTier;
+  subscriptionStatus?: SubscriptionStatus;
+  subscriptionCurrentPeriodEnd?: string | null;
   tabs?: React.ReactNode;
 };
 
-export default function AppHeader({ tierId, tabs }: Props) {
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export default function AppHeader({
+  tierId,
+  subscriptionStatus,
+  subscriptionCurrentPeriodEnd,
+  tabs,
+}: Props) {
   const tier = getTier(tierId);
   const isFree = tierId === "discovery";
+  // effectiveTierId keeps a canceled subscriber's old tier active (features,
+  // generation caps, etc.) right up until the period actually ends — so the
+  // badge would otherwise just say "PRO" with no hint anything's changed.
+  // Show "Free" (what they're really billed as) plus a reminder of what
+  // they're still keeping and until when.
+  const isCanceling = subscriptionStatus === "canceled" && !isFree;
 
   const logo = (
     <Link
@@ -27,13 +47,18 @@ export default function AppHeader({ tierId, tabs }: Props) {
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4">
       <span
         className={`whitespace-nowrap rounded-full px-3 py-1 font-mono text-xs uppercase tracking-widest ${
-          isFree
+          isFree || isCanceling
             ? "border border-accent-ink/30 text-accent-ink/80"
             : "bg-sage text-sage-ink"
         }`}
       >
-        {tier.name}
+        {isCanceling ? "Free" : tier.name}
       </span>
+      {isCanceling && subscriptionCurrentPeriodEnd && (
+        <span className="whitespace-nowrap text-xs text-accent-ink/60">
+          Keeping {tier.name} until {formatDate(subscriptionCurrentPeriodEnd)}
+        </span>
+      )}
       <Link
         href="/app/billing"
         className="whitespace-nowrap text-sm text-accent-ink/75 transition hover:text-accent-ink"

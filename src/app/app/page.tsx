@@ -76,6 +76,10 @@ export default async function AppPage() {
       initialMealPlan={mealPlan ?? []}
       initialWeekStartDate={weekStartDate}
       tierId={tier.id}
+      subscriptionStatus={profile?.subscription_status ?? "free"}
+      subscriptionCurrentPeriodEnd={
+        profile?.subscription_current_period_end ?? null
+      }
       generationsUsedThisMonth={generationsUsedThisMonth ?? 0}
       generationsPerMonth={tier.generationsPerMonth}
       initialDietaryPreferences={profile?.dietary_preferences ?? []}

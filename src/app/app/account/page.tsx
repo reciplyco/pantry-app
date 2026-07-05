@@ -35,7 +35,13 @@ export default async function AccountPage() {
 
   return (
     <>
-      <AppHeader tierId={currentTierId} />
+      <AppHeader
+        tierId={currentTierId}
+        subscriptionStatus={subscriptionStatus}
+        subscriptionCurrentPeriodEnd={
+          profile?.subscription_current_period_end ?? null
+        }
+      />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="font-serif text-3xl font-medium">Account</h1>
         <p className="mt-2 text-ink-muted">{user.email}</p>

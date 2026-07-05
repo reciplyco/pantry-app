@@ -11,6 +11,7 @@ import type {
   PantryItem,
   Recipe,
   ShoppingListItem,
+  SubscriptionStatus,
   SubscriptionTier,
 } from "@/lib/types";
 import { DAY_LABELS } from "@/lib/types";
@@ -34,6 +35,8 @@ type Props = {
   initialMealPlan: MealPlanEntryWithRecipe[];
   initialWeekStartDate: string;
   tierId: SubscriptionTier;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionCurrentPeriodEnd: string | null;
   generationsUsedThisMonth: number;
   generationsPerMonth: number;
   initialDietaryPreferences: string[];
@@ -49,6 +52,8 @@ export default function Dashboard({
   initialMealPlan,
   initialWeekStartDate,
   tierId,
+  subscriptionStatus,
+  subscriptionCurrentPeriodEnd,
   generationsUsedThisMonth,
   generationsPerMonth,
   initialDietaryPreferences,
@@ -401,6 +406,8 @@ export default function Dashboard({
     <>
       <AppHeader
         tierId={tierId}
+        subscriptionStatus={subscriptionStatus}
+        subscriptionCurrentPeriodEnd={subscriptionCurrentPeriodEnd}
         tabs={
           <AppTabs
             activeTab={activeTab}
