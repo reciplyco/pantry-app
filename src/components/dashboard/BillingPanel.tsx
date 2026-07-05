@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
@@ -63,10 +62,11 @@ export default function BillingPanel({
       ? autocheckoutTier
       : null
   );
-  const [upgraded, setUpgraded] = useState<{
+  const [changeResult, setChangeResult] = useState<{
+    kind: "upgraded" | "downgraded" | "reactivated";
     tierName: string;
     amountCharged: number | null;
-    reactivated: boolean;
+    effectiveDate: string | null;
   } | null>(null);
 
   // A checkout session creates a *new* subscription — fine when the user
@@ -89,11 +89,11 @@ export default function BillingPanel({
     ? "discovery"
     : currentTierId;
 
-  // Downgrades live on the Account settings page, not here — this tab is
-  // "your plan, and what you could upgrade to," so tiers ranked below the
-  // current one are left off entirely instead of shown with a downgrade
-  // link. (A standalone plans page for signed-out visitors is coming
-  // separately; this tab doesn't need to double as that.)
+  // Normally "your plan, and what you could upgrade to" — tiers ranked
+  // below the current one are left off, since downgrading otherwise lives
+  // on the Account settings page. While canceling, displayTierId is
+  // Discovery, so every tier (including ones below the real currentTierId)
+  // shows up here again — see isDowngrade below for how those are handled.
   const visibleTiers = TIERS.filter(
     (t) => t.id === displayTierId || tierRank(t.id) > tierRank(displayTierId)
   );
@@ -133,7 +133,7 @@ export default function BillingPanel({
   async function upgrade(tierId: PaidTierId) {
     setLoading(tierId);
     setError(null);
-    setUpgraded(null);
+    setChangeResult(null);
     try {
       const res = await fetch("/api/stripe/change-plan", {
         method: "POST",
@@ -147,10 +147,11 @@ export default function BillingPanel({
         return;
       }
       track(AnalyticsEvent.UpgradeClicked, { plan: `${tierId}_${period}_switch` });
-      setUpgraded({
+      setChangeResult({
+        kind: body.kind,
         tierName: getTier(tierId).name,
         amountCharged: body.amountCharged ?? null,
-        reactivated: body.kind === "reactivated",
+        effectiveDate: body.effectiveDate ?? null,
       });
       setConfirming(null);
       setLoading(null);
@@ -211,20 +212,30 @@ export default function BillingPanel({
           {currentTier.name} feature and benefit until then.
         </div>
       )}
-      {upgraded && (
+      {changeResult && (
         <div className="paper-card rounded-sm border-sage/40 p-4 text-sm text-ink">
-          {upgraded.reactivated ? (
+          {changeResult.kind === "reactivated" ? (
             <>
-              Your <strong>{upgraded.tierName}</strong> plan is active
+              Your <strong>{changeResult.tierName}</strong>{" "}plan is active
               again — the scheduled cancellation has been undone, and
               billing continues as normal.
             </>
+          ) : changeResult.kind === "downgraded" ? (
+            <>
+              Got it — you&rsquo;re moving to{" "}
+              <strong>{changeResult.tierName}</strong>{" "}
+              {changeResult.effectiveDate
+                ? `on ${formatDate(changeResult.effectiveDate)}`
+                : "at the end of your current billing period"}
+              . You&rsquo;ll keep every {currentTier.name}{" "}feature and
+              benefit until then.
+            </>
           ) : (
             <>
-              Upgraded to <strong>{upgraded.tierName}</strong>! It&rsquo;s
-              active right away.{" "}
-              {upgraded.amountCharged !== null
-                ? `We credited what you'd already paid this cycle and charged you $${upgraded.amountCharged.toFixed(2)} today for the prorated difference.`
+              Upgraded to <strong>{changeResult.tierName}</strong>!{" "}
+              It&rsquo;s active right away.{" "}
+              {changeResult.amountCharged !== null
+                ? `We credited what you'd already paid this cycle and charged you $${changeResult.amountCharged.toFixed(2)} today for the prorated difference.`
                 : "The prorated difference for the rest of this cycle was charged today."}
             </>
           )}
@@ -279,6 +290,12 @@ export default function BillingPanel({
           // isPendingCancellation branch in that route) instead of erroring
           // "you're already on this plan."
           const isReactivation = isCanceling && tier.id === currentTierId;
+          // Only reachable while canceling — visibleTiers is filtered by
+          // displayTierId (Discovery) then, so a tier ranked below the real
+          // currentTierId can show up here even though it's a genuine
+          // downgrade from what's still actually active in Stripe.
+          const isDowngrade =
+            !isReactivation && tierRank(tier.id) < tierRank(currentTierId);
           const displayPrice =
             tier.monthlyPrice === 0
               ? 0
@@ -347,7 +364,9 @@ export default function BillingPanel({
                     <p className="text-xs text-ink-muted">
                       {isReactivation
                         ? "This undoes the scheduled cancellation — same plan, same price, billing continues as normal."
-                        : "Takes effect right away — we'll credit what you've already paid this cycle and charge you the prorated difference today."}
+                        : isDowngrade
+                          ? `Takes effect at the end of your current billing period — you'll keep ${currentTier.name} features until then.`
+                          : "Takes effect right away — we'll credit what you've already paid this cycle and charge you the prorated difference today."}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -360,7 +379,9 @@ export default function BillingPanel({
                           ? "Working…"
                           : isReactivation
                             ? "Confirm"
-                            : "Confirm upgrade"}
+                            : isDowngrade
+                              ? "Confirm downgrade"
+                              : "Confirm upgrade"}
                       </button>
                       <button
                         type="button"
@@ -401,22 +422,11 @@ export default function BillingPanel({
                   >
                     {loading === tier.id ? "Redirecting…" : "Subscribe"}
                   </button>
-                ) : !isReactivation && tierRank(tier.id) < tierRank(currentTierId) ? (
-                  // A real subscription still exists (hasNoPaidPlan is
-                  // false) and this tier ranks below it — only reachable
-                  // here while canceling, since displayTierId makes every
-                  // tier visible again. Downgrading still belongs on the
-                  // Account settings page, same as when not canceling.
-                  <Link
-                    href="/app/account"
-                    className="block w-full rounded-full border border-line px-5 py-2.5 text-center text-sm font-medium text-ink-muted transition hover:border-ink hover:text-ink"
-                  >
-                    Manage in Account settings →
-                  </Link>
                 ) : (
-                  // Either a real upgrade (tier ranks above currentTierId)
-                  // or a reactivation (same tier, currently canceling) —
-                  // both go through the confirm step and change-plan.
+                  // A real upgrade, a downgrade, or a reactivation (same
+                  // tier, currently canceling) — all three go through the
+                  // confirm step and change-plan, which branches on price
+                  // vs. rank to do the right Stripe-side thing.
                   <button
                     type="button"
                     disabled={loading !== null}

@@ -17,6 +17,23 @@ const requestSchema = z.object({
   period: z.enum(["monthly", "yearly"]).default("monthly"),
 });
 
+// Stripe rejects passing both cancel_at_period_end and cancel_at in the same
+// update call ("Received both cancel_at_period_end and cancel_at
+// parameters. Please pass in only one.") — clear whichever one this
+// subscription actually used to schedule its cancellation (see
+// mapStripeStatus in stripe.ts for why either can be the one that's set).
+function clearCancellationParams(
+  subscription: Stripe.Subscription
+): Stripe.SubscriptionUpdateParams {
+  if (subscription.cancel_at_period_end) {
+    return { cancel_at_period_end: false };
+  }
+  if (subscription.cancel_at != null) {
+    return { cancel_at: null };
+  }
+  return {};
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -104,10 +121,10 @@ export async function POST(request: Request) {
     // "subscribe again" once canceled, so undo the cancellation instead of
     // erroring. No price change, so nothing to invoice or prorate.
     try {
-      await stripe.subscriptions.update(subscription.id, {
-        cancel_at_period_end: false,
-        cancel_at: null,
-      });
+      await stripe.subscriptions.update(
+        subscription.id,
+        clearCancellationParams(subscription)
+      );
       return NextResponse.json({ kind: "reactivated", tier: targetTierId });
     } catch (err) {
       console.error("Failed to reactivate subscription", err);
@@ -145,13 +162,9 @@ export async function POST(request: Request) {
         items: [{ id: currentItem.id, price: newPriceId }],
         proration_behavior: "always_invoice",
         // A previous cancel-via-portal attempt shouldn't survive an
-        // explicit plan change — clear both representations Stripe uses
-        // for a scheduled cancellation (see mapStripeStatus in stripe.ts:
-        // this API version can set `cancel_at` without ever setting
-        // cancel_at_period_end, so both need clearing or the subscription
-        // would still read as "canceled" after this upgrade).
-        cancel_at_period_end: false,
-        cancel_at: null,
+        // explicit plan change — clear it (see clearCancellationParams for
+        // why only one of the two possible fields gets passed).
+        ...clearCancellationParams(subscription),
         expand: ["latest_invoice"],
       });
 
@@ -177,6 +190,15 @@ export async function POST(request: Request) {
         { error: "Couldn't determine your current billing period." },
         { status: 500 }
       );
+    }
+
+    // Clear a pending cancellation before handing the subscription off to a
+    // schedule — the schedule's own end_behavior below is what should
+    // govern what happens next, not a leftover cancel_at/cancel_at_period_end
+    // from an earlier trip through the portal.
+    const cancellationParams = clearCancellationParams(subscription);
+    if (Object.keys(cancellationParams).length > 0) {
+      await stripe.subscriptions.update(subscription.id, cancellationParams);
     }
 
     const schedule = await stripe.subscriptionSchedules.create({
