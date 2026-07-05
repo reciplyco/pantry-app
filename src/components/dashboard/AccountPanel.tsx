@@ -182,6 +182,8 @@ export default function AccountPanel({
             <p className="mt-1 text-sm text-ink-muted">
               {subscriptionStatus === "canceled" ? (
                 <>You&rsquo;re on the {discoveryName} plan.</>
+              ) : pendingChange ? (
+                <>You&rsquo;re on the {getTier(pendingChange.tier).name} plan.</>
               ) : (
                 <>You&rsquo;re on the {currentTier.name} plan.</>
               )}

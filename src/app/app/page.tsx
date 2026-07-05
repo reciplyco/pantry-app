@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentWeekStartDateKey, thirtyDaysAgoISOString } from "@/lib/dates";
 import { effectiveTierId, getTier } from "@/lib/pricing";
+import { getActiveSubscription, getPendingScheduledChange } from "@/lib/stripe";
 import type {
   MealPlanEntryWithRecipe,
   PantryItem,
@@ -58,9 +59,17 @@ export default async function AppPage() {
       .gte("created_at", thirtyDaysAgoISOString()),
   ]);
 
+  const subscriptionStatus = profile?.subscription_status ?? "free";
   const tier = getTier(
-    effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
+    effectiveTierId(subscriptionStatus, profile?.subscription_tier)
   );
+
+  const pendingChange =
+    subscriptionStatus === "active" && profile?.stripe_customer_id
+      ? await getActiveSubscription(profile.stripe_customer_id).then((sub) =>
+          sub ? getPendingScheduledChange(sub) : null
+        )
+      : null;
 
   return (
     <Dashboard
@@ -72,10 +81,11 @@ export default async function AppPage() {
       initialMealPlan={mealPlan ?? []}
       initialWeekStartDate={weekStartDate}
       tierId={tier.id}
-      subscriptionStatus={profile?.subscription_status ?? "free"}
+      subscriptionStatus={subscriptionStatus}
       subscriptionCurrentPeriodEnd={
         profile?.subscription_current_period_end ?? null
       }
+      pendingChange={pendingChange}
       generationsUsedThisMonth={generationsUsedThisMonth ?? 0}
       generationsPerMonth={tier.generationsPerMonth}
       initialDietaryPreferences={profile?.dietary_preferences ?? []}

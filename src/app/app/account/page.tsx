@@ -37,6 +37,7 @@ export default async function AccountPage() {
         subscriptionCurrentPeriodEnd={
           profile?.subscription_current_period_end ?? null
         }
+        pendingChange={pendingChange}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="font-serif text-3xl font-medium">Account</h1>

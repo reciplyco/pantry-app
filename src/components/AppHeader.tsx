@@ -2,12 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { getTier } from "@/lib/pricing";
+import type { PendingScheduledChange } from "@/lib/stripe";
 import type { SubscriptionStatus, SubscriptionTier } from "@/lib/types";
 
 type Props = {
   tierId: SubscriptionTier;
   subscriptionStatus?: SubscriptionStatus;
   subscriptionCurrentPeriodEnd?: string | null;
+  pendingChange?: PendingScheduledChange | null;
   tabs?: React.ReactNode;
 };
 
@@ -28,6 +30,7 @@ export default function AppHeader({
   tierId,
   subscriptionStatus,
   subscriptionCurrentPeriodEnd,
+  pendingChange,
   tabs,
 }: Props) {
   const tier = getTier(tierId);
@@ -36,9 +39,20 @@ export default function AppHeader({
   // effectiveTierId keeps a canceled subscriber's old tier active (features,
   // generation caps, etc.) right up until the period actually ends — so the
   // badge would otherwise just say "PRO" with no hint anything's changed.
-  // Show the free (Discovery) tier name — what they're really billed as —
-  // plus a reminder of what they're still keeping and until when.
+  // Same idea for a scheduled downgrade to another paid tier (pendingChange)
+  // — the real entitlement doesn't change until it takes effect, so show
+  // whichever tier the customer is headed to, plus a reminder of what
+  // they're still keeping and until when. Canceling to Discovery wins if
+  // somehow both are set.
   const isCanceling = subscriptionStatus === "canceled" && !isFree;
+  const displayName = isCanceling
+    ? discoveryName
+    : pendingChange
+      ? getTier(pendingChange.tier).name
+      : tier.name;
+  const keepingUntil = isCanceling
+    ? subscriptionCurrentPeriodEnd
+    : (pendingChange?.effectiveDate ?? null);
 
   const logo = (
     <Link
@@ -59,11 +73,11 @@ export default function AppHeader({
             : "bg-sage text-sage-ink"
         }`}
       >
-        {isCanceling ? discoveryName : tier.name}
+        {displayName}
       </span>
-      {isCanceling && subscriptionCurrentPeriodEnd && (
+      {(isCanceling || pendingChange) && keepingUntil && (
         <span className="whitespace-nowrap text-xs text-accent-ink/60">
-          Keeping {tier.name} until {formatDate(subscriptionCurrentPeriodEnd)}
+          Keeping {tier.name} until {formatDate(keepingUntil)}
         </span>
       )}
       <Link

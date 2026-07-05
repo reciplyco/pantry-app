@@ -55,6 +55,7 @@ export default async function BillingPage({
         subscriptionCurrentPeriodEnd={
           profile?.subscription_current_period_end ?? null
         }
+        pendingChange={pendingChange}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="font-serif text-3xl font-medium">Billing</h1>

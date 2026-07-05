@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addDays, currentWeekStartDateKey, toDateKey } from "@/lib/dates";
 import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
 import AppHeader from "@/components/AppHeader";
+import type { PendingScheduledChange } from "@/lib/stripe";
 import type {
   Day,
   MealPlanEntryWithRecipe,
@@ -37,6 +38,7 @@ type Props = {
   tierId: SubscriptionTier;
   subscriptionStatus: SubscriptionStatus;
   subscriptionCurrentPeriodEnd: string | null;
+  pendingChange: PendingScheduledChange | null;
   generationsUsedThisMonth: number;
   generationsPerMonth: number;
   initialDietaryPreferences: string[];
@@ -54,6 +56,7 @@ export default function Dashboard({
   tierId,
   subscriptionStatus,
   subscriptionCurrentPeriodEnd,
+  pendingChange,
   generationsUsedThisMonth,
   generationsPerMonth,
   initialDietaryPreferences,
@@ -408,6 +411,7 @@ export default function Dashboard({
         tierId={tierId}
         subscriptionStatus={subscriptionStatus}
         subscriptionCurrentPeriodEnd={subscriptionCurrentPeriodEnd}
+        pendingChange={pendingChange}
         tabs={
           <AppTabs
             activeTab={activeTab}

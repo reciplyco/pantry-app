@@ -111,20 +111,31 @@ export async function POST(request: Request) {
   if (currentItem.price.id === newPriceId) {
     const isPendingCancellation =
       subscription.cancel_at_period_end || subscription.cancel_at != null;
-    if (!isPendingCancellation) {
+    const hasPendingSchedule = subscription.schedule != null;
+    if (!isPendingCancellation && !hasPendingSchedule) {
       return NextResponse.json(
         { error: "You're already on this plan." },
         { status: 400 }
       );
     }
-    // Same plan, just scheduled to cancel — the Billing tab shows this as
-    // "subscribe again" once canceled, so undo the cancellation instead of
-    // erroring. No price change, so nothing to invoice or prorate.
+    // Same plan, just scheduled to change — either canceling, or a
+    // downgrade schedule taking effect later. The Billing tab shows both
+    // as "subscribe again," so undo whichever is actually pending instead
+    // of erroring. No price change, so nothing to invoice or prorate.
     try {
-      await stripe.subscriptions.update(
-        subscription.id,
-        clearCancellationParams(subscription)
-      );
+      if (subscription.schedule) {
+        const scheduleId =
+          typeof subscription.schedule === "string"
+            ? subscription.schedule
+            : subscription.schedule.id;
+        await stripe.subscriptionSchedules.release(scheduleId);
+      }
+      if (isPendingCancellation) {
+        await stripe.subscriptions.update(
+          subscription.id,
+          clearCancellationParams(subscription)
+        );
+      }
       return NextResponse.json({ kind: "reactivated", tier: targetTierId });
     } catch (err) {
       console.error("Failed to reactivate subscription", err);

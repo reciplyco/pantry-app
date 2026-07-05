@@ -78,22 +78,29 @@ export default function BillingPanel({
   const currentTier = getTier(currentTierId);
   const discoveryName = getTier("discovery").name;
 
-  // A canceled subscription is still live in Stripe under the hood (see
-  // effectiveTierId/mapStripeStatus) — generation limits etc. correctly
-  // keep using `currentTierId` for that. But this tab should *look* like
-  // the customer is already back on Discovery, with every plan (including
-  // the one they're canceling out of) shown as something to subscribe to
-  // again — not like they still have an active paid plan.
+  // A canceled subscription (or one with a downgrade scheduled) is still
+  // live in Stripe under the hood (see effectiveTierId/mapStripeStatus) —
+  // generation limits etc. correctly keep using `currentTierId` for that.
+  // But this tab should *look* like the customer is already on whichever
+  // tier they're headed to — Discovery if canceling, or the pendingChange
+  // target if a downgrade to another paid tier is scheduled — with every
+  // plan (including the one they're moving off of) shown as something to
+  // subscribe to again, not like they still have their old active plan.
   const isCanceling = subscriptionStatus === "canceled";
   const displayTierId: SubscriptionTier = isCanceling
     ? "discovery"
-    : currentTierId;
+    : (pendingChange?.tier ?? currentTierId);
+  // Drives whether tier cards read as "Subscribe" (you're effectively
+  // already on displayTierId, just picking a plan) vs. "Upgrade" (you have
+  // an active plan and are changing it).
+  const showsAsSubscribe = isCanceling || pendingChange != null;
 
   // Normally "your plan, and what you could upgrade to" — tiers ranked
   // below the current one are left off, since downgrading otherwise lives
-  // on the Account settings page. While canceling, displayTierId is
-  // Discovery, so every tier (including ones below the real currentTierId)
-  // shows up here again — see isDowngrade below for how those are handled.
+  // on the Account settings page. While canceling or mid-downgrade,
+  // displayTierId is whatever tier the customer is headed to, so every
+  // tier (including ones below the real currentTierId) shows up here again
+  // — see isDowngrade below for how those are handled.
   const visibleTiers = TIERS.filter(
     (t) => t.id === displayTierId || tierRank(t.id) > tierRank(displayTierId)
   );
@@ -280,19 +287,24 @@ export default function BillingPanel({
         }`}
       >
         {visibleTiers.map((tier) => {
+          // isCurrent already covers the pendingChange target tier too
+          // (displayTierId is pendingChange.tier when one exists), so
+          // there's no separate "isPending" case left to show a disabled
+          // "Scheduled for X" button — the card just reads as current.
           const isCurrent = tier.id === displayTierId;
-          const isPending =
-            pendingChange !== null && pendingChange.tier === tier.id;
           const isConfirming = confirming === tier.id;
           const showRecommended = tier.recommended && !isCurrent;
-          // Reactivating the plan you're already canceling out of — same
-          // price, so change-plan just undoes the cancellation (see the
-          // isPendingCancellation branch in that route) instead of erroring
-          // "you're already on this plan."
-          const isReactivation = isCanceling && tier.id === currentTierId;
-          // Only reachable while canceling — visibleTiers is filtered by
-          // displayTierId (Discovery) then, so a tier ranked below the real
-          // currentTierId can show up here even though it's a genuine
+          // Re-picking the plan you're actually still on right now (either
+          // canceling out of it, or mid-downgrade away from it) — same
+          // price, so change-plan just undoes the scheduled change (see the
+          // "same price" branch in that route) instead of erroring "you're
+          // already on this plan."
+          const isReactivation =
+            (isCanceling || pendingChange != null) &&
+            tier.id === currentTierId;
+          // Only reachable while canceling or mid-downgrade — visibleTiers
+          // is filtered by displayTierId then, so a tier ranked below the
+          // real currentTierId can show up here even though it's a genuine
           // downgrade from what's still actually active in Stripe.
           const isDowngrade =
             !isReactivation && tierRank(tier.id) < tierRank(currentTierId);
@@ -363,7 +375,7 @@ export default function BillingPanel({
                   <div className="space-y-2">
                     <p className="text-xs text-ink-muted">
                       {isReactivation
-                        ? "This undoes the scheduled cancellation — same plan, same price, billing continues as normal."
+                        ? "This undoes the scheduled change — same plan, same price, billing continues as normal."
                         : isDowngrade
                           ? `Takes effect at the end of your current billing period — you'll keep ${currentTier.name} features until then.`
                           : "Takes effect right away — we'll credit what you've already paid this cycle and charge you the prorated difference today."}
@@ -401,14 +413,6 @@ export default function BillingPanel({
                   >
                     Current plan
                   </button>
-                ) : isPending ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink-muted"
-                  >
-                    Scheduled for {formatDate(pendingChange!.effectiveDate)}
-                  </button>
                 ) : hasNoPaidPlan ? (
                   <button
                     type="button"
@@ -424,9 +428,10 @@ export default function BillingPanel({
                   </button>
                 ) : (
                   // A real upgrade, a downgrade, or a reactivation (same
-                  // tier, currently canceling) — all three go through the
-                  // confirm step and change-plan, which branches on price
-                  // vs. rank to do the right Stripe-side thing.
+                  // tier, currently canceling or mid-downgrade) — all three
+                  // go through the confirm step and change-plan, which
+                  // branches on price vs. rank to do the right Stripe-side
+                  // thing.
                   <button
                     type="button"
                     disabled={loading !== null}
@@ -437,7 +442,7 @@ export default function BillingPanel({
                         : "border border-line hover:border-ink"
                     }`}
                   >
-                    {isCanceling ? "Subscribe" : "Upgrade"}
+                    {showsAsSubscribe ? "Subscribe" : "Upgrade"}
                   </button>
                 )}
               </div>
