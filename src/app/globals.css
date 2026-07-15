@@ -191,3 +191,40 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Marketing-page-only custom cursor — scoped via a class toggled on <html>
+   by CustomCursor.tsx on mount/unmount, so it never leaks into the app. */
+html.cursor-none-marketing,
+html.cursor-none-marketing * {
+  cursor: none !important;
+}
+
+/* Ingredient marquee — duplicated content scrolls left in a seamless loop;
+   pausing on hover feels more intentional than a strip that never stops. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.anim-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+.anim-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.cursor-none-marketing,
+  html.cursor-none-marketing * {
+    cursor: auto !important;
+  }
+
+  .anim-marquee {
+    animation: none !important;
+  }
+}

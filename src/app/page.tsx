@@ -2,8 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getTier } from "@/lib/pricing";
 import GenerateShowcase from "@/components/marketing/GenerateShowcase";
 import MarketingPricing from "@/components/marketing/MarketingPricing";
+import HeroSceneLoader from "@/components/marketing/HeroSceneLoader";
+import IngredientMarquee from "@/components/marketing/IngredientMarquee";
+import SmoothScroll from "@/components/marketing/SmoothScroll";
+import CustomCursor from "@/components/marketing/CustomCursor";
+import GrainOverlay from "@/components/marketing/GrainOverlay";
+import Reveal from "@/components/marketing/Reveal";
+
+const discoveryTier = getTier("discovery");
 
 const FEATURES = [
   {
@@ -40,6 +49,9 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-full flex-col">
+      <SmoothScroll />
+      <CustomCursor />
+      <GrainOverlay />
       <div className="relative overflow-hidden bg-hero">
         <svg
           aria-hidden="true"
@@ -80,6 +92,8 @@ export default async function LandingPage() {
           />
         </svg>
 
+        <HeroSceneLoader />
+
         <header className="relative mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
           <span className="flex items-center gap-2 font-serif text-2xl font-medium tracking-tight sm:text-4xl">
             <Image src="/logo-mark.png" alt="" width={36} height={41} className="h-7 w-auto sm:h-9" />
@@ -108,42 +122,50 @@ export default async function LandingPage() {
         </header>
 
         <section className="relative mx-auto w-full max-w-3xl px-6 py-16 text-center md:py-24">
-          <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
-            No more &ldquo;what&rsquo;s for dinner&rdquo;
-          </p>
-          <h1 className="font-serif text-5xl leading-[1.05] font-medium tracking-tight text-ink md:text-6xl">
-            Cook what&rsquo;s already in your kitchen.
-          </h1>
-          <p className="mx-auto mt-6 max-w-md text-lg text-ink-muted">
-            List the ingredients you have on hand. Reciply turns them into
-            recipes, a shopping list for anything missing, and a weekly
-            meal plan — automatically.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/login?tab=signup"
-              className="rounded-full bg-accent px-6 py-3 font-medium text-accent-ink transition hover:opacity-90"
-            >
-              Get started free
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full border border-line px-6 py-3 font-medium text-ink transition hover:border-ink"
-            >
-              Sign in
-            </Link>
-          </div>
-          <p className="mt-4 font-mono text-xs text-ink-muted">
-            Free — 3 recipe generations / week. Upgrade any time.
-          </p>
+          <Reveal>
+            <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-ink-muted">
+              No more &ldquo;what&rsquo;s for dinner&rdquo;
+            </p>
+            <h1 className="font-serif text-5xl leading-[1.05] font-medium tracking-tight text-ink md:text-6xl">
+              Cook what&rsquo;s already in your kitchen.
+            </h1>
+          </Reveal>
+          <Reveal delay={0.12}>
+            <p className="mx-auto mt-6 max-w-md text-lg text-ink-muted">
+              List the ingredients you have on hand. Reciply turns them into
+              recipes, a shopping list for anything missing, and a weekly
+              meal plan — automatically.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/login?tab=signup"
+                className="rounded-full bg-accent px-6 py-3 font-medium text-accent-ink transition hover:opacity-90"
+              >
+                Get started free
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-full border border-line px-6 py-3 font-medium text-ink transition hover:border-ink"
+              >
+                Sign in
+              </Link>
+            </div>
+            <p className="mt-4 font-mono text-xs text-ink-muted">
+              Free — {discoveryTier.generationsPerWeek} recipe generations / week. Upgrade any time.
+            </p>
+          </Reveal>
         </section>
       </div>
+
+      <IngredientMarquee />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6">
         <GenerateShowcase />
 
         <section id="pricing" className="py-16">
-          <MarketingPricing />
+          <Reveal>
+            <MarketingPricing />
+          </Reveal>
         </section>
 
         <section className="pb-24">
@@ -151,14 +173,16 @@ export default async function LandingPage() {
             How it works
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((f) => (
-              <div key={f.tag} className="paper-card rounded-sm p-5">
-                <span className="font-mono text-xs text-accent">{f.tag}</span>
-                <h3 className="mt-2 font-serif text-lg font-medium">
-                  {f.title}
-                </h3>
-                <p className="mt-2 text-sm text-ink-muted">{f.body}</p>
-              </div>
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.tag} delay={i * 0.1}>
+                <div className="paper-card rounded-sm p-5">
+                  <span className="font-mono text-xs text-accent">{f.tag}</span>
+                  <h3 className="mt-2 font-serif text-lg font-medium">
+                    {f.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-ink-muted">{f.body}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </section>
