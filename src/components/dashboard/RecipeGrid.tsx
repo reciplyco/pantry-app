@@ -6,6 +6,8 @@ import RecipeCard from "./RecipeCard";
 
 type Props = {
   recipes: Recipe[];
+  showNutrition: boolean;
+  multiDayAllowed: boolean;
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
@@ -28,6 +30,8 @@ function matchesQuery(recipe: Recipe, query: string) {
 
 export default function RecipeGrid({
   recipes,
+  showNutrition,
+  multiDayAllowed,
   onAddToShoppingList,
   onAddToMealPlan,
   onToggleShare,
@@ -88,7 +92,9 @@ export default function RecipeGrid({
             >
               <option value="newest">Newest</option>
               <option value="time">Quickest</option>
-              <option value="calories">Lowest calorie</option>
+              {showNutrition && (
+                <option value="calories">Lowest calorie</option>
+              )}
             </select>
             <label className="flex items-center gap-1.5 text-sm text-ink-muted">
               <input
@@ -132,6 +138,8 @@ export default function RecipeGrid({
               key={recipe.id}
               recipe={recipe}
               index={index}
+              showNutrition={showNutrition}
+              multiDayAllowed={multiDayAllowed}
               onAddToShoppingList={onAddToShoppingList}
               onAddToMealPlan={onAddToMealPlan}
               onToggleShare={onToggleShare}

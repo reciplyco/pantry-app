@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { currentWeekStartDateKey, thirtyDaysAgoISOString } from "@/lib/dates";
-import { effectiveTierId, getTier } from "@/lib/pricing";
+import { currentWeekStartDateKey, sevenDaysAgoISOString } from "@/lib/dates";
+import { effectiveTierId, getTier, hasFeature } from "@/lib/pricing";
 import { getActiveSubscription, getPendingScheduledChange } from "@/lib/stripe";
 import type {
   MealPlanEntryWithRecipe,
@@ -28,7 +28,8 @@ export default async function AppPage() {
     { data: recipes },
     { data: shoppingList },
     { data: mealPlan },
-    { count: generationsUsedThisMonth },
+    { count: generationsUsedThisWeek },
+    { count: searchesUsedThisWeek },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single<Profile>(),
     supabase
@@ -36,11 +37,14 @@ export default async function AppPage() {
       .select("*")
       .order("created_at", { ascending: true })
       .returns<PantryItem[]>(),
+    // Fetched generously (well above any tier's history cap) and sliced down
+    // below once the tier is known — the tier depends on `profile`, a
+    // sibling query in this same Promise.all, so it isn't known yet here.
     supabase
       .from("recipes")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(30)
+      .limit(200)
       .returns<Recipe[]>(),
     supabase
       .from("shopping_list_items")
@@ -56,13 +60,27 @@ export default async function AppPage() {
       .from("generation_log")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", thirtyDaysAgoISOString()),
+      .gte("created_at", sevenDaysAgoISOString()),
+    supabase
+      .from("search_log")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", sevenDaysAgoISOString()),
   ]);
 
   const subscriptionStatus = profile?.subscription_status ?? "free";
   const tier = getTier(
     effectiveTierId(subscriptionStatus, profile?.subscription_tier)
   );
+
+  // History depth is a hard per-tier cap on what's fetched at all. Nutrition
+  // is gated at render time instead (see showNutrition below) rather than
+  // stripped here — the same recipe objects get reused as the payload when
+  // "undo delete" re-inserts a row, and nulling nutrition at this boundary
+  // would silently and permanently destroy it on that path.
+  const visibleRecipes = tier.historyCap
+    ? (recipes ?? []).slice(0, tier.historyCap)
+    : (recipes ?? []);
 
   const pendingChange =
     subscriptionStatus === "active" && profile?.stripe_customer_id
@@ -76,7 +94,7 @@ export default async function AppPage() {
       userId={user.id}
       userEmail={user.email ?? null}
       initialPantryItems={pantryItems ?? []}
-      initialRecipes={recipes ?? []}
+      initialRecipes={visibleRecipes}
       initialShoppingList={shoppingList ?? []}
       initialMealPlan={mealPlan ?? []}
       initialWeekStartDate={weekStartDate}
@@ -86,8 +104,12 @@ export default async function AppPage() {
         profile?.subscription_current_period_end ?? null
       }
       pendingChange={pendingChange}
-      generationsUsedThisMonth={generationsUsedThisMonth ?? 0}
-      generationsPerMonth={tier.generationsPerMonth}
+      generationsUsedThisWeek={generationsUsedThisWeek ?? 0}
+      generationsPerWeek={tier.generationsPerWeek}
+      searchesUsedThisWeek={searchesUsedThisWeek ?? 0}
+      webSearchesPerWeek={tier.webSearchesPerWeek}
+      showNutrition={hasFeature(tier.id, "nutritionInsights")}
+      showPantryAnalytics={hasFeature(tier.id, "pantryAnalytics")}
       initialDietaryPreferences={profile?.dietary_preferences ?? []}
       initialDietaryNotes={profile?.dietary_notes ?? ""}
     />

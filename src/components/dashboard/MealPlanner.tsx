@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { DAYS, DAY_LABELS, type MealPlanEntryWithRecipe } from "@/lib/types";
 import { addDays, formatShortDate } from "@/lib/dates";
 
@@ -11,6 +12,9 @@ type Props = {
   onNextWeek: () => void;
   onRemoveEntry: (id: string) => Promise<void>;
   onShopForWeek: () => Promise<void>;
+  onPlanWeek: () => Promise<void>;
+  planWeekAllowed: boolean;
+  planningWeek: boolean;
 };
 
 export default function MealPlanner({
@@ -20,10 +24,16 @@ export default function MealPlanner({
   onNextWeek,
   onRemoveEntry,
   onShopForWeek,
+  onPlanWeek,
+  planWeekAllowed,
+  planningWeek,
 }: Props) {
   const [shopping, setShopping] = useState(false);
   const monday = new Date(`${weekStartDate}T00:00:00`);
   const sunday = addDays(monday, 6);
+  const emptyDaysCount = DAYS.filter(
+    (day) => !entries.some((e) => e.day === day)
+  ).length;
 
   async function handleShopForWeek() {
     setShopping(true);
@@ -56,16 +66,39 @@ export default function MealPlanner({
             ›
           </button>
         </div>
-        {entries.length > 0 && (
-          <button
-            type="button"
-            disabled={shopping}
-            onClick={handleShopForWeek}
-            className="rounded-full bg-sage px-5 py-2.5 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
-          >
-            {shopping ? "Adding…" : "Shop for the week"}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {planWeekAllowed ? (
+            <button
+              type="button"
+              disabled={planningWeek || emptyDaysCount === 0}
+              onClick={onPlanWeek}
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
+            >
+              {planningWeek
+                ? "Planning…"
+                : emptyDaysCount === 0
+                  ? "Week fully planned"
+                  : `Plan my week (${emptyDaysCount} day${emptyDaysCount === 1 ? "" : "s"})`}
+            </button>
+          ) : (
+            <Link
+              href="/app/billing"
+              className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink"
+            >
+              Plan my week — upgrade to Ultimate →
+            </Link>
+          )}
+          {entries.length > 0 && (
+            <button
+              type="button"
+              disabled={shopping}
+              onClick={handleShopForWeek}
+              className="rounded-full bg-sage px-5 py-2.5 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
+            >
+              {shopping ? "Adding…" : "Shop for the week"}
+            </button>
+          )}
+        </div>
       </div>
 
       {entries.length === 0 && (

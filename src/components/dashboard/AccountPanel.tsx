@@ -199,7 +199,7 @@ export default function AccountPanel({
               <p className="mt-2 text-sm text-ink-muted">
                 Your {currentTier.name}{" "}plan is canceled, but
                 you&rsquo;ll keep its features —{" "}
-                {currentTier.generationsPerMonth}{" "}AI generations/month
+                {currentTier.generationsPerWeek}{" "}AI generations/week
                 and everything else — until {periodEndLabel}. After that,
                 it&rsquo;s the {discoveryName}{" "}plan from here.
               </p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, currentWeekStartDateKey, toDateKey } from "@/lib/dates";
 import { AnalyticsEvent, identifyUser, track } from "@/lib/analytics";
+import { hasFeature } from "@/lib/pricing";
 import AppHeader from "@/components/AppHeader";
 import type { PendingScheduledChange } from "@/lib/stripe";
 import type {
@@ -15,8 +16,9 @@ import type {
   SubscriptionStatus,
   SubscriptionTier,
 } from "@/lib/types";
-import { DAY_LABELS } from "@/lib/types";
+import { DAY_LABELS, DAYS } from "@/lib/types";
 import PantryTab from "./PantryTab";
+import PantryAnalyticsPanel from "./PantryAnalyticsPanel";
 import GenerateTab from "./GenerateTab";
 import SearchTab from "./SearchTab";
 import RecipeGrid from "./RecipeGrid";
@@ -39,8 +41,12 @@ type Props = {
   subscriptionStatus: SubscriptionStatus;
   subscriptionCurrentPeriodEnd: string | null;
   pendingChange: PendingScheduledChange | null;
-  generationsUsedThisMonth: number;
-  generationsPerMonth: number;
+  generationsUsedThisWeek: number;
+  generationsPerWeek: number;
+  searchesUsedThisWeek: number;
+  webSearchesPerWeek: number;
+  showNutrition: boolean;
+  showPantryAnalytics: boolean;
   initialDietaryPreferences: string[];
   initialDietaryNotes: string;
 };
@@ -57,8 +63,12 @@ export default function Dashboard({
   subscriptionStatus,
   subscriptionCurrentPeriodEnd,
   pendingChange,
-  generationsUsedThisMonth,
-  generationsPerMonth,
+  generationsUsedThisWeek,
+  generationsPerWeek,
+  searchesUsedThisWeek,
+  webSearchesPerWeek,
+  showNutrition,
+  showPantryAnalytics,
   initialDietaryPreferences,
   initialDietaryNotes,
 }: Props) {
@@ -73,7 +83,8 @@ export default function Dashboard({
   const [shoppingList, setShoppingList] = useState(initialShoppingList);
   const [mealPlan, setMealPlan] = useState(initialMealPlan);
   const [weekStartDate, setWeekStartDate] = useState(initialWeekStartDate);
-  const [usedThisMonth, setUsedThisMonth] = useState(generationsUsedThisMonth);
+  const [usedThisWeek, setUsedThisWeek] = useState(generationsUsedThisWeek);
+  const [searchesUsed, setSearchesUsed] = useState(searchesUsedThisWeek);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -82,8 +93,12 @@ export default function Dashboard({
   const [customInstructions, setCustomInstructions] = useState("");
   const [pantryOnly, setPantryOnly] = useState(false);
   const [recipeCount, setRecipeCount] = useState<1 | 5>(1);
+  const [planningWeek, setPlanningWeek] = useState(false);
 
-  const remaining = Math.max(0, generationsPerMonth - usedThisMonth);
+  const remaining = Math.max(0, generationsPerWeek - usedThisWeek);
+  const searchesRemaining = Math.max(0, webSearchesPerWeek - searchesUsed);
+  const multiDayAllowed = hasFeature(tierId, "multiDayPlanning");
+  const bulkMealPrepAllowed = hasFeature(tierId, "bulkMealPrep");
 
   function isSelected(id: string) {
     return !deselectedIds.has(id);
@@ -139,23 +154,20 @@ export default function Dashboard({
     }
   }
 
-  async function handleGenerate() {
-    if (selectedNames.length === 0) {
-      setGenerateError("Select at least one pantry item first.");
-      return;
-    }
+  async function runGenerate(payload: {
+    pantryItems: string[];
+    customInstructions?: string;
+    pantryOnly?: boolean;
+    recipeCount: 1 | 5;
+    suggestForMe?: boolean;
+  }) {
     setGenerating(true);
     setGenerateError(null);
     try {
       const res = await fetch("/api/generate-recipes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pantryItems: selectedNames,
-          customInstructions: customInstructions.trim() || undefined,
-          pantryOnly,
-          recipeCount,
-        }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -163,9 +175,10 @@ export default function Dashboard({
         return;
       }
       setRecipes((prev) => [...(body.recipes as Recipe[]), ...prev]);
-      setUsedThisMonth((prev) => prev + recipeCount);
+      setUsedThisWeek((prev) => prev + payload.recipeCount);
       track(AnalyticsEvent.RecipeGenerated, {
         count: (body.recipes as Recipe[]).length,
+        suggestForMe: payload.suggestForMe ?? false,
       });
       // Recipes now live on their own tab — jump there so the results of
       // clicking Generate are actually visible instead of appearing to
@@ -176,6 +189,31 @@ export default function Dashboard({
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function handleGenerate() {
+    if (selectedNames.length === 0) {
+      setGenerateError("Select at least one pantry item first.");
+      return;
+    }
+    await runGenerate({
+      pantryItems: selectedNames,
+      customInstructions: customInstructions.trim() || undefined,
+      pantryOnly,
+      recipeCount,
+    });
+  }
+
+  async function handleSuggestForMe() {
+    if (pantryItems.length === 0) {
+      setGenerateError("Add some pantry items first.");
+      return;
+    }
+    await runGenerate({
+      pantryItems: pantryItems.map((item) => item.name),
+      recipeCount: 1,
+      suggestForMe: true,
+    });
   }
 
   async function deleteRecipe(recipe: Recipe) {
@@ -224,6 +262,14 @@ export default function Dashboard({
       .single<Recipe>();
     if (!error && data) {
       setRecipes((prev) => prev.map((r) => (r.id === recipe.id ? data : r)));
+      return;
+    }
+    // Raised by the recipes_favorites_cap_check trigger (see migrations) —
+    // enforced in Postgres, not just hidden in the UI, since this update
+    // goes straight from the browser to Supabase with no server route
+    // in between to check tier against.
+    if (error?.message === "favorites_cap_reached") {
+      showToast("You've hit your plan's favorites limit — upgrade for more.");
     }
   }
 
@@ -238,6 +284,10 @@ export default function Dashboard({
     if (!error && data) {
       setShoppingList((prev) => [...prev, data]);
       track(AnalyticsEvent.ShoppingListItemAdded);
+      return;
+    }
+    if (error?.message === "shopping_list_cap_reached") {
+      showToast("Your shopping list is full on this plan — upgrade for unlimited items.");
     }
   }
 
@@ -269,6 +319,12 @@ export default function Dashboard({
       showToast(
         `Added ${data.length} item${data.length === 1 ? "" : "s"} to shopping list`
       );
+      return;
+    }
+    // The whole batch is rejected together if it would push a capped plan
+    // over its limit — see the shopping_list_items_cap_check trigger.
+    if (error?.message === "shopping_list_cap_reached") {
+      showToast("Your shopping list is full on this plan — upgrade for unlimited items.");
     }
   }
 
@@ -391,6 +447,55 @@ export default function Dashboard({
       showToast(
         `Added ${data.length} item${data.length === 1 ? "" : "s"} for this week's meals`
       );
+      return;
+    }
+    if (error?.message === "shopping_list_cap_reached") {
+      showToast("Your shopping list is full on this plan — upgrade for unlimited items.");
+    }
+  }
+
+  async function handlePlanWeek() {
+    const emptyDays = DAYS.filter(
+      (day) => !mealPlan.some((entry) => entry.day === day)
+    );
+    if (emptyDays.length === 0) {
+      showToast("Your week's already fully planned.");
+      return;
+    }
+    if (pantryItems.length === 0) {
+      showToast("Add some pantry items first.");
+      return;
+    }
+    setPlanningWeek(true);
+    try {
+      const res = await fetch("/api/plan-week", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pantryItems: pantryItems.map((item) => item.name),
+          weekStartDate,
+          days: emptyDays,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        showToast(body.message ?? body.error ?? "Couldn't plan your week.");
+        return;
+      }
+      setRecipes((prev) => [...(body.recipes as Recipe[]), ...prev]);
+      setMealPlan((prev) => [...prev, ...(body.entries as MealPlanEntryWithRecipe[])]);
+      setUsedThisWeek((prev) => prev + emptyDays.length);
+      track(AnalyticsEvent.RecipeGenerated, {
+        count: emptyDays.length,
+        planWeek: true,
+      });
+      showToast(
+        `Planned ${emptyDays.length} day${emptyDays.length === 1 ? "" : "s"} for you.`
+      );
+    } catch {
+      showToast("Couldn't plan your week. Please try again.");
+    } finally {
+      setPlanningWeek(false);
     }
   }
 
@@ -440,15 +545,22 @@ export default function Dashboard({
         />
 
         {activeTab === "pantry" && (
-          <PantryTab
-            pantryItems={pantryItems}
-            onAdd={addPantryItem}
-            onRemove={removePantryItem}
-            isSelected={isSelected}
-            onToggleSelected={toggleSelected}
-            allSelected={allSelected}
-            onToggleSelectAll={toggleSelectAll}
-          />
+          <>
+            <PantryTab
+              pantryItems={pantryItems}
+              onAdd={addPantryItem}
+              onRemove={removePantryItem}
+              isSelected={isSelected}
+              onToggleSelected={toggleSelected}
+              allSelected={allSelected}
+              onToggleSelectAll={toggleSelectAll}
+            />
+            <PantryAnalyticsPanel
+              recipes={recipes}
+              pantryItemCount={pantryItems.length}
+              locked={!showPantryAnalytics}
+            />
+          </>
         )}
 
         {activeTab === "generate" && (
@@ -463,11 +575,12 @@ export default function Dashboard({
             recipeCount={recipeCount}
             onRecipeCountChange={setRecipeCount}
             onGenerate={handleGenerate}
+            onSuggestForMe={handleSuggestForMe}
             generating={generating}
             generateError={generateError}
             tierId={tierId}
             remaining={remaining}
-            generationsPerMonth={generationsPerMonth}
+            generationsPerWeek={generationsPerWeek}
             initialDietaryPreferences={initialDietaryPreferences}
             initialDietaryNotes={initialDietaryNotes}
           />
@@ -477,12 +590,18 @@ export default function Dashboard({
           <SearchTab
             selectedNames={selectedNames}
             totalPantryCount={pantryItems.length}
+            tierId={tierId}
+            remaining={searchesRemaining}
+            webSearchesPerWeek={webSearchesPerWeek}
+            onSearchUsed={() => setSearchesUsed((prev) => prev + 1)}
           />
         )}
 
         {activeTab === "recipes" && (
           <RecipeGrid
             recipes={recipes}
+            showNutrition={showNutrition}
+            multiDayAllowed={multiDayAllowed}
             onAddToShoppingList={addNeedIngredientsToShoppingList}
             onAddToMealPlan={addToMealPlan}
             onToggleShare={toggleShare}
@@ -511,6 +630,9 @@ export default function Dashboard({
             onNextWeek={() => goToWeek(1)}
             onRemoveEntry={removeMealPlanEntry}
             onShopForWeek={shopForWeek}
+            onPlanWeek={handlePlanWeek}
+            planWeekAllowed={bulkMealPrepAllowed}
+            planningWeek={planningWeek}
           />
         )}
 

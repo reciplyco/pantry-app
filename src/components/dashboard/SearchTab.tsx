@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { SearchRecipeResult, SearchSort } from "@/lib/types";
+import Link from "next/link";
+import type { SearchRecipeResult, SearchSort, SubscriptionTier } from "@/lib/types";
 import {
   SEARCH_CUISINE_OPTIONS,
   SEARCH_DIET_OPTIONS,
@@ -15,6 +16,10 @@ import SearchRecipeCard from "./SearchRecipeCard";
 type Props = {
   selectedNames: string[];
   totalPantryCount: number;
+  tierId: SubscriptionTier;
+  remaining: number;
+  webSearchesPerWeek: number;
+  onSearchUsed: () => void;
 };
 
 function toggleInList(list: string[], value: string): string[] {
@@ -42,7 +47,16 @@ function sortResults(
   return copy;
 }
 
-export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
+export default function SearchTab({
+  selectedNames,
+  totalPantryCount,
+  tierId,
+  remaining,
+  webSearchesPerWeek,
+  onSearchUsed,
+}: Props) {
+  const isCapped = remaining <= 0;
+  const isTopTier = tierId === "ultimate";
   const [manualInput, setManualInput] = useState("");
   const [manualIngredients, setManualIngredients] = useState<string[]>([]);
   const [maxTime, setMaxTime] = useState<number | undefined>(undefined);
@@ -85,6 +99,7 @@ export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
   }
 
   async function handleSearch() {
+    if (isCapped) return;
     setLoading(true);
     setError(null);
     try {
@@ -101,11 +116,12 @@ export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
       });
       const body = await res.json();
       if (!res.ok) {
-        setError(body.error ?? "Something went wrong.");
+        setError(body.message ?? body.error ?? "Something went wrong.");
         setResults([]);
       } else {
         const found = body.results as SearchRecipeResult[];
         setResults(found);
+        onSearchUsed();
         track(AnalyticsEvent.RecipeSearchPerformed, {
           resultCount: found.length,
           ingredientCount: combinedIngredients.length,
@@ -132,6 +148,11 @@ export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
       <p className="text-sm text-ink-muted">
         Search the web for recipes that use what you&rsquo;ve got. Results
         link out to the original recipe site — nothing here is AI-generated.
+      </p>
+      <p className="mt-2 font-mono text-xs text-ink-muted">
+        <span className={isCapped ? "text-accent" : undefined}>
+          {remaining} / {webSearchesPerWeek} web searches left this week
+        </span>
       </p>
 
       <div className="mt-6">
@@ -300,7 +321,7 @@ export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
       <button
         type="button"
         onClick={handleSearch}
-        disabled={loading}
+        disabled={loading || isCapped}
         className="mt-6 w-full rounded-full bg-accent px-6 py-4 text-lg font-medium text-accent-ink transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
       >
         {loading ? (
@@ -316,7 +337,19 @@ export default function SearchTab({ selectedNames, totalPantryCount }: Props) {
           "Search recipes"
         )}
       </button>
-      {error && <p className="mt-2 text-center text-sm text-accent">{error}</p>}
+      {isCapped && !isTopTier && (
+        <p className="mt-3 text-center">
+          <Link
+            href="/app/billing"
+            className="text-sm font-medium text-accent underline underline-offset-2"
+          >
+            Upgrade for more web searches →
+          </Link>
+        </p>
+      )}
+      {error && !isCapped && (
+        <p className="mt-2 text-center text-sm text-accent">{error}</p>
+      )}
 
       {hasSearched && !error && (
         <div className="mt-8">

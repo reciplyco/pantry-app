@@ -176,6 +176,10 @@ export async function POST(request: Request) {
         // explicit plan change — clear it (see clearCancellationParams for
         // why only one of the two possible fields gets passed).
         ...clearCancellationParams(subscription),
+        // Belt-and-suspenders: this should already be on from the original
+        // Checkout Session (see stripe/checkout/route.ts), but an item/price
+        // change is exactly the kind of update worth being explicit about.
+        automatic_tax: { enabled: true },
         expand: ["latest_invoice"],
       });
 

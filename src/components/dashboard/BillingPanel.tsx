@@ -6,6 +6,8 @@ import { AnalyticsEvent, track } from "@/lib/analytics";
 import {
   TIERS,
   YEARLY_DISCOUNT_PERCENT,
+  CURRENCY_LABEL,
+  GST_NOTE,
   getTier,
   tierRank,
   yearlyPrice,
@@ -348,35 +350,41 @@ export default function BillingPanel({
               <p className="mt-2">
                 <span className="text-2xl font-medium">${displayPrice}</span>
                 <span className="text-sm text-ink-muted">
-                  {tier.monthlyPrice === 0 ? "" : " / month"}
+                  {tier.monthlyPrice === 0
+                    ? ` ${CURRENCY_LABEL}`
+                    : ` ${CURRENCY_LABEL} / month`}
                 </span>
               </p>
               {tier.monthlyPrice > 0 && period === "yearly" && (
                 <p className="mt-0.5 font-mono text-xs text-ink-muted">
-                  billed ${yearlyPrice(tier.monthlyPrice)}/year
+                  billed ${yearlyPrice(tier.monthlyPrice)} {CURRENCY_LABEL}/year
                 </p>
               )}
 
               <p className="mt-3 font-mono text-xs uppercase tracking-widest text-ink-muted">
-                {tier.generationsPerMonth} AI generations / month
+                {tier.generationsPerWeek} AI generations / week
+              </p>
+              <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-ink-muted">
+                {tier.webSearchesPerWeek} web recipe searches / week
               </p>
 
               <ul className="mt-4 flex-1 space-y-1.5 text-sm text-ink-muted">
                 {tier.features.map((feature) => (
-                  <li key={feature} className="flex gap-2">
+                  <li key={feature.label} className="flex gap-2">
                     <span className="text-sage" aria-hidden="true">
                       ✓
                     </span>
-                    {feature}
+                    <span>
+                      {feature.label}
+                      {feature.comingSoon && (
+                        <span className="ml-1.5 rounded-full bg-line px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                          Coming soon
+                        </span>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
-
-              {tier.id === "ultimate" && (
-                <p className="mt-3 text-xs italic text-ink-muted">
-                  Final feature set coming soon — this is a preview lineup.
-                </p>
-              )}
 
               <div className="mt-5">
                 {isConfirming ? (
@@ -465,9 +473,7 @@ export default function BillingPanel({
 
       {error && <p className="text-center text-sm text-accent">{error}</p>}
 
-      <p className="text-center text-xs text-ink-muted">
-        Generation limits above are still being tuned and may change.
-      </p>
+      <p className="text-center text-xs text-ink-muted">{GST_NOTE}</p>
     </div>
   );
 }

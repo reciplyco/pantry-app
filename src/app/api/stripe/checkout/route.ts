@@ -78,6 +78,13 @@ export async function POST(request: Request) {
     cancel_url: `${siteUrl}/app/billing?checkout=cancelled`,
     metadata: { user_id: user.id },
     subscription_data: { metadata: { user_id: user.id } },
+    // Prices are AUD/GST-inclusive — Stripe Tax (enabled in the Dashboard,
+    // see scripts/create-aud-prices.mjs) works out the GST component of
+    // that same total rather than adding to it. customer_update saves the
+    // address the customer enters here back onto the Customer object, so
+    // renewals keep calculating tax correctly without asking again.
+    automatic_tax: { enabled: true },
+    customer_update: { address: "auto", name: "auto" },
   });
 
   return NextResponse.json({ url: session.url });

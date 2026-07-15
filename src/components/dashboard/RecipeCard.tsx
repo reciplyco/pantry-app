@@ -7,6 +7,8 @@ import { getIngredientIcon } from "@/lib/ingredient-icons";
 type Props = {
   recipe: Recipe;
   index?: number;
+  showNutrition: boolean;
+  multiDayAllowed: boolean;
   onAddToShoppingList: (recipe: Recipe) => Promise<void>;
   onAddToMealPlan: (recipeId: string, day: Day) => Promise<void>;
   onToggleShare: (recipe: Recipe) => Promise<void>;
@@ -22,6 +24,8 @@ const BANNER_WASHES = ["bg-accent/10", "bg-sage/10", "bg-paper-alt"];
 export default function RecipeCard({
   recipe,
   index = 0,
+  showNutrition,
+  multiDayAllowed,
   onAddToShoppingList,
   onAddToMealPlan,
   onToggleShare,
@@ -30,6 +34,7 @@ export default function RecipeCard({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [day, setDay] = useState<Day>("mon");
+  const [selectedDays, setSelectedDays] = useState<Set<Day>>(new Set());
   const [addingToList, setAddingToList] = useState(false);
   const [addingToPlan, setAddingToPlan] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -50,6 +55,30 @@ export default function RecipeCard({
     setFavoriting(true);
     await onToggleFavorite(recipe);
     setFavoriting(false);
+  }
+
+  function toggleSelectedDay(d: Day) {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) {
+        next.delete(d);
+      } else {
+        next.add(d);
+      }
+      return next;
+    });
+  }
+
+  async function handleAddToPlan() {
+    setAddingToPlan(true);
+    if (multiDayAllowed) {
+      for (const d of selectedDays) {
+        await onAddToMealPlan(recipe.id, d);
+      }
+    } else {
+      await onAddToMealPlan(recipe.id, day);
+    }
+    setAddingToPlan(false);
   }
 
   const shareUrl =
@@ -163,7 +192,7 @@ export default function RecipeCard({
           {recipe.servings ? `${recipe.servings} servings` : null}
         </p>
 
-        {recipe.nutrition && (
+        {showNutrition && recipe.nutrition && (
           <p className="mt-2 font-mono text-xs text-ink-muted">
             {Math.round(recipe.nutrition.calories)} cal ·{" "}
             {Math.round(recipe.nutrition.protein_g)}g protein ·{" "}
@@ -267,31 +296,64 @@ export default function RecipeCard({
             {addingToList ? "Adding…" : "Add missing to shopping list"}
           </button>
 
-          <div className="flex items-center gap-2">
-            <select
-              value={day}
-              onChange={(e) => setDay(e.target.value as Day)}
-              className="rounded-sm border border-line bg-card px-2 py-2 text-sm outline-none focus:border-accent"
-            >
-              {DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {DAY_LABELS[d]}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={addingToPlan}
-              onClick={async () => {
-                setAddingToPlan(true);
-                await onAddToMealPlan(recipe.id, day);
-                setAddingToPlan(false);
-              }}
-              className="flex-1 rounded-full bg-sage px-4 py-2 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
-            >
-              {addingToPlan ? "Adding…" : "Add to plan"}
-            </button>
-          </div>
+          {multiDayAllowed ? (
+            <div>
+              <div className="flex flex-wrap gap-1.5">
+                {DAYS.map((d) => {
+                  const active = selectedDays.has(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleSelectedDay(d)}
+                      aria-pressed={active}
+                      className={`rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+                        active
+                          ? "border-accent bg-accent text-accent-ink"
+                          : "border-line text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      {DAY_LABELS[d].slice(0, 3)}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                disabled={addingToPlan || selectedDays.size === 0}
+                onClick={handleAddToPlan}
+                className="mt-2 w-full rounded-full bg-sage px-4 py-2 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
+              >
+                {addingToPlan
+                  ? "Adding…"
+                  : selectedDays.size > 1
+                    ? `Add to ${selectedDays.size} days`
+                    : "Add to plan"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <select
+                value={day}
+                onChange={(e) => setDay(e.target.value as Day)}
+                className="rounded-sm border border-line bg-card px-2 py-2 text-sm outline-none focus:border-accent"
+              >
+                {DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {DAY_LABELS[d]}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={addingToPlan}
+                onClick={handleAddToPlan}
+                className="flex-1 rounded-full bg-sage px-4 py-2 text-sm font-medium text-sage-ink transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 disabled:opacity-50"
+              >
+                {addingToPlan ? "Adding…" : "Add to plan"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </article>

@@ -107,7 +107,8 @@ export async function generateRecipes(
   dietary?: DietaryConstraints,
   customInstructions?: string,
   pantryOnly?: boolean,
-  count: number = 3
+  count: number = 3,
+  surpriseMe?: boolean
 ): Promise<GeneratedRecipe[]> {
   const constraints: string[] = [];
   if (dietary?.preferences.length) {
@@ -125,6 +126,13 @@ export async function generateRecipes(
     ? "\n\nThe user wants to cook using ONLY the ingredients they listed — do not add any ingredient they don't already have, including basic staples like oil, salt, pepper, or spices unless those are explicitly in their list. Every recipe's need_ingredients array must be empty."
     : "";
 
+  // "Suggest for me": the user didn't hand-pick a subset of their pantry or
+  // ask for anything specific — pantryItems here is their whole pantry, so
+  // the ask is to pick something well-suited rather than use all of it.
+  const surpriseMeInstruction = surpriseMe
+    ? "\n\nThe user didn't request anything specific — they want a personalized suggestion from their full pantry. Don't try to use every ingredient listed; pick a smaller, sensible subset that makes a genuinely good dish, favoring variety over the most obvious choice."
+    : "";
+
   const requestLine = customInstructions?.trim()
     ? `\n\nAdditional request from the user: ${customInstructions.trim()}`
     : "";
@@ -140,7 +148,8 @@ export async function generateRecipes(
     system:
       "You are a practical home-cooking assistant. Given a list of ingredients someone already has, suggest recipes that make the most of those ingredients. Prefer recipes that need few, if any, additional ingredients, and note clearly what's missing. Keep steps concise and realistic for a home cook. Give honest, reasonable nutrition estimates per serving." +
       dietaryInstruction +
-      pantryOnlyInstruction,
+      pantryOnlyInstruction +
+      surpriseMeInstruction,
     messages: [
       {
         role: "user",

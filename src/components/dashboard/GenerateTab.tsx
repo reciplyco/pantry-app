@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { getIngredientIcon } from "@/lib/ingredient-icons";
-import { getTier } from "@/lib/pricing";
+import { getTier, hasFeature } from "@/lib/pricing";
 import type { PantryItem, SubscriptionTier } from "@/lib/types";
 import DietaryPreferencesPanel from "./DietaryPreferencesPanel";
 
@@ -20,11 +20,12 @@ type Props = {
   recipeCount: 1 | 5;
   onRecipeCountChange: (value: 1 | 5) => void;
   onGenerate: () => Promise<void>;
+  onSuggestForMe: () => Promise<void>;
   generating: boolean;
   generateError: string | null;
   tierId: SubscriptionTier;
   remaining: number;
-  generationsPerMonth: number;
+  generationsPerWeek: number;
   initialDietaryPreferences: string[];
   initialDietaryNotes: string;
 };
@@ -40,11 +41,12 @@ export default function GenerateTab({
   recipeCount,
   onRecipeCountChange,
   onGenerate,
+  onSuggestForMe,
   generating,
   generateError,
   tierId,
   remaining,
-  generationsPerMonth,
+  generationsPerWeek,
   initialDietaryPreferences,
   initialDietaryNotes,
 }: Props) {
@@ -52,6 +54,9 @@ export default function GenerateTab({
   const isTopTier = getTier(tierId).id === "ultimate";
   const hasSelection = selectedItems.length > 0;
   const canPickFive = remaining >= 5;
+  const dietaryAllowed = hasFeature(tierId, "dietaryFilters");
+  const leftoversAllowed = hasFeature(tierId, "leftoversMode");
+  const suggestForMeAllowed = hasFeature(tierId, "suggestForMe");
 
   // The 5-recipe option can become unavailable out from under the user
   // (e.g. they just spent their last few generations) — fall back to 1
@@ -96,7 +101,7 @@ export default function GenerateTab({
           </p>
           <div className="shrink-0 font-mono text-xs text-ink-muted">
             <span className={isCapped ? "text-accent" : undefined}>
-              {remaining} / {generationsPerMonth} generations left this month
+              {remaining} / {generationsPerWeek} generations left this week
             </span>
           </div>
         </div>
@@ -156,18 +161,33 @@ export default function GenerateTab({
           </p>
         </div>
 
-        <label className="mt-4 flex items-start gap-2 text-sm text-ink">
+        <label
+          className={`mt-4 flex items-start gap-2 text-sm ${leftoversAllowed ? "text-ink" : "text-ink-muted"}`}
+        >
           <input
             type="checkbox"
-            checked={pantryOnly}
+            checked={leftoversAllowed && pantryOnly}
+            disabled={!leftoversAllowed}
             onChange={(e) => onPantryOnlyChange(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:cursor-not-allowed disabled:opacity-50"
           />
           <span>
-            Only use what&rsquo;s in my pantry
+            Leftovers mode
             <span className="block text-xs text-ink-muted">
-              No extra ingredients, not even basic staples — recipes will be
-              buildable from your selected items alone.
+              {leftoversAllowed ? (
+                "No extra ingredients, not even basic staples — recipes will be buildable from your selected items alone."
+              ) : (
+                <>
+                  No extra ingredients, not even basic staples.{" "}
+                  <Link
+                    href="/app/billing"
+                    className="text-accent underline underline-offset-2"
+                  >
+                    Upgrade to Essentials
+                  </Link>{" "}
+                  to unlock.
+                </>
+              )}
             </span>
           </span>
         </label>
@@ -193,7 +213,7 @@ export default function GenerateTab({
               title={
                 canPickFive
                   ? undefined
-                  : "Need 5 generations left this month to pick this"
+                  : "Need 5 generations left this week to pick this"
               }
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
                 recipeCount === 5
@@ -251,13 +271,50 @@ export default function GenerateTab({
               {generateError}
             </p>
           )}
+          <div className="mt-3 text-center">
+            {suggestForMeAllowed ? (
+              <button
+                type="button"
+                onClick={onSuggestForMe}
+                disabled={generating || isCapped || totalCount === 0}
+                className="text-sm font-medium text-ink-muted underline underline-offset-2 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Not sure what to cook? Suggest for me →
+              </button>
+            ) : (
+              <Link
+                href="/app/billing"
+                className="text-sm text-ink-muted underline underline-offset-2 transition hover:text-ink"
+              >
+                Suggest for me — upgrade to Pro to unlock →
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
-      <DietaryPreferencesPanel
-        initialPreferences={initialDietaryPreferences}
-        initialNotes={initialDietaryNotes}
-      />
+      {dietaryAllowed ? (
+        <DietaryPreferencesPanel
+          initialPreferences={initialDietaryPreferences}
+          initialNotes={initialDietaryNotes}
+        />
+      ) : (
+        <div className="mt-8 paper-card rounded-sm p-6">
+          <h2 className="font-serif text-xl font-medium">
+            Dietary preferences
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Set allergies and dietary needs so every generated recipe
+            respects them.
+          </p>
+          <Link
+            href="/app/billing"
+            className="mt-4 inline-block rounded-full border border-line px-5 py-2 text-sm font-medium transition hover:border-ink"
+          >
+            Upgrade to Essentials →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

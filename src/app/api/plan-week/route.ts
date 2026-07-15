@@ -5,23 +5,17 @@ import { generateRecipes } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sevenDaysAgoISOString } from "@/lib/dates";
 import { effectiveTierId, getTier, hasFeature } from "@/lib/pricing";
-import type { Profile } from "@/lib/types";
+import { DAYS, type Day, type MealPlanEntryWithRecipe, type Profile } from "@/lib/types";
 
 const requestSchema = z.object({
   pantryItems: z
     .array(z.string().trim().min(1).max(80))
-    .min(1, "Add at least one pantry item first.")
+    .min(1, "Add some pantry items first.")
     .max(40),
-  customInstructions: z.string().trim().max(100).optional(),
-  pantryOnly: z.boolean().optional(),
-  // A single generate action can ask for either 1 recipe (costs 1 weekly
-  // generation) or 5 at once (costs all 5) — no in-between, so the quota
-  // math below just needs to check the count against what's left.
-  recipeCount: z.union([z.literal(1), z.literal(5)]).default(1),
-  // "Suggest for me" (Pro+): pantryItems is the user's whole pantry rather
-  // than a hand-picked subset, and the prompt is nudged toward picking a
-  // good dish rather than using everything listed.
-  suggestForMe: z.boolean().optional(),
+  weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid week."),
+  // The specific days the client determined don't already have a meal
+  // planned this week — bulk-prep only ever fills gaps, never overwrites.
+  days: z.array(z.enum(DAYS as [Day, ...Day[]])).min(1).max(7),
 });
 
 export async function POST(request: Request) {
@@ -34,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await checkRateLimit(`generate-recipes:${user.id}`, 10, 300);
+  const allowed = await checkRateLimit(`plan-week:${user.id}`, 5, 300);
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please wait a few minutes and try again." },
@@ -52,8 +46,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { pantryItems, customInstructions, pantryOnly, recipeCount, suggestForMe } =
-    parsed.data;
+  const { pantryItems, weekStartDate } = parsed.data;
+  const days = Array.from(new Set(parsed.data.days));
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -73,6 +67,13 @@ export async function POST(request: Request) {
     effectiveTierId(profile?.subscription_status ?? "free", profile?.subscription_tier)
   );
 
+  if (!hasFeature(tier.id, "bulkMealPrep")) {
+    return NextResponse.json(
+      { error: "Bulk meal-prep planning is an Ultimate feature." },
+      { status: 403 }
+    );
+  }
+
   const { count: usedCount } = await supabase
     .from("generation_log")
     .select("*", { count: "exact", head: true })
@@ -81,57 +82,39 @@ export async function POST(request: Request) {
 
   const remaining = tier.generationsPerWeek - (usedCount ?? 0);
 
-  if (remaining < recipeCount) {
+  if (remaining < days.length) {
     return NextResponse.json(
       {
         error: "generation_limit_reached",
-        message:
-          remaining <= 0
-            ? tier.id === "ultimate"
-              ? `You've used all ${tier.generationsPerWeek} recipe generations this week.`
-              : `You've used all ${tier.generationsPerWeek} recipe generations this week. Upgrade for more.`
-            : `You only have ${remaining} generation${remaining === 1 ? "" : "s"} left this week — try generating 1 recipe instead, or upgrade for more.`,
+        message: `Planning ${days.length} day${days.length === 1 ? "" : "s"} needs ${days.length} generations, but you only have ${remaining} left this week.`,
       },
       { status: 402 }
     );
   }
-
-  // Dietary/health constraints and "leftovers mode" (pantryOnly) are
-  // Essentials+ perks — enforced here, not just hidden in the UI, since a
-  // client could otherwise send these fields directly regardless of what's
-  // rendered. Silently drop rather than error: a Discovery user hitting
-  // Generate shouldn't get a confusing failure over a field they can't see.
-  const dietaryAllowed = hasFeature(tier.id, "dietaryFilters");
-  const leftoversAllowed = hasFeature(tier.id, "leftoversMode");
-  const suggestForMeAllowed = suggestForMe && hasFeature(tier.id, "suggestForMe");
 
   let generated;
   try {
     generated = await generateRecipes(
       pantryItems,
       {
-        preferences: dietaryAllowed ? (profile?.dietary_preferences ?? []) : [],
-        notes: dietaryAllowed ? (profile?.dietary_notes ?? null) : null,
+        preferences: profile?.dietary_preferences ?? [],
+        notes: profile?.dietary_notes ?? null,
       },
-      customInstructions,
-      leftoversAllowed ? pantryOnly : false,
-      recipeCount,
-      suggestForMeAllowed
+      undefined,
+      false,
+      days.length
     );
   } catch (err) {
-    console.error("Recipe generation failed", err);
+    console.error("Plan-week generation failed", err);
     return NextResponse.json(
-      { error: "Recipe generation failed. Please try again." },
+      { error: "Couldn't generate your week's recipes. Please try again." },
       { status: 502 }
     );
   }
 
-  // One row per generation "use" — quota is enforced by counting rows above,
-  // so a 5-recipe request logs 5 rows rather than 1, and there's no need for
-  // a separate quantity column.
   const { error: logError } = await supabase
     .from("generation_log")
-    .insert(Array.from({ length: recipeCount }, () => ({ user_id: user.id })));
+    .insert(Array.from({ length: days.length }, () => ({ user_id: user.id })));
   if (logError) console.error("Failed to write generation_log rows", logError);
 
   const rowsToInsert = generated.map((r) => ({
@@ -145,12 +128,12 @@ export async function POST(request: Request) {
     nutrition: r.nutrition,
   }));
 
-  const { data: inserted, error: insertError } = await supabase
+  const { data: insertedRecipes, error: insertError } = await supabase
     .from("recipes")
     .insert(rowsToInsert)
     .select("*");
 
-  if (insertError) {
+  if (insertError || !insertedRecipes) {
     console.error("Failed to save generated recipes", insertError);
     return NextResponse.json(
       { error: "Recipes were generated but couldn't be saved." },
@@ -158,5 +141,26 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ recipes: inserted });
+  const entriesToInsert = days.map((day, i) => ({
+    user_id: user.id,
+    day,
+    week_start_date: weekStartDate,
+    recipe_id: insertedRecipes[i].id,
+  }));
+
+  const { data: insertedEntries, error: entryError } = await supabase
+    .from("meal_plan_entries")
+    .insert(entriesToInsert)
+    .select("*, recipe:recipes(id,title,time_minutes,servings,need_ingredients)")
+    .returns<MealPlanEntryWithRecipe[]>();
+
+  if (entryError || !insertedEntries) {
+    console.error("Failed to save meal plan entries", entryError);
+    return NextResponse.json(
+      { error: "Recipes were generated and saved, but couldn't be added to your plan." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ recipes: insertedRecipes, entries: insertedEntries });
 }
